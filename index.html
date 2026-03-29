@@ -752,8 +752,18 @@ async function showHits(){
 // ═══════════════════════════════════════════════════════════════
 // STEP 4 — TRAIN MODELS
 // ═══════════════════════════════════════════════════════════════
+// Model checkbox toggle — use mousedown + stopPropagation to prevent
+// bubbling from child elements causing double/triple toggles
 document.querySelectorAll('.model-check').forEach(el=>{
-  el.addEventListener('click',()=>el.classList.toggle('selected'));
+  el.addEventListener('mousedown', e=>{
+    e.preventDefault();           // stop focus flicker
+    e.stopPropagation();          // stop bubbling from child clicks
+    el.classList.toggle('selected');
+  });
+  // Block all child click events from re-triggering the parent
+  el.querySelectorAll('*').forEach(child=>{
+    child.addEventListener('mousedown', e=>e.stopPropagation());
+  });
 });
 
 async function trainModels(){

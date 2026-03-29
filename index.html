@@ -68,6 +68,8 @@ header{max-width:980px;margin:0 auto 28px;display:flex;align-items:flex-end;just
 .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:20px 10px;text-align:center;
   cursor:pointer;transition:all .2s;background:var(--surface);position:relative;}
 .upload-zone:hover{border-color:rgba(0,200,255,.4);background:rgba(0,200,255,.03);}
+.upload-zone.loaded{cursor:default;}
+.upload-zone.loaded:hover{border-color:var(--green);background:rgba(0,229,160,.07);}
 .upload-zone.loaded{border-style:solid;border-color:var(--green);background:rgba(0,229,160,.04);}
 .upload-zone.loaded:hover{background:rgba(0,229,160,.07);}
 .uz-num{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-bottom:6px;letter-spacing:1px;}
@@ -276,7 +278,7 @@ select:focus{outline:none;border-color:var(--accent);}
       The model with the <strong>smallest drop</strong> is the most robust.
     </div>
     <div style="margin-bottom:18px;">
-      <label class="upload-zone" style="max-width:320px;display:block;" id="infZone" onclick="document.getElementById('infInput').click()">
+      <label class="upload-zone" style="max-width:320px;display:block;" id="infZone" onclick="if(!this.classList.contains('loaded'))document.getElementById('infInput').click()">
         <span class="uz-icon">📦</span>
         <div class="uz-num">HW2 INFERENCE DATA</div>
         <div class="uz-hint">Click to upload the HW2 ZIP file<br>(individual hit .wav files inside)</div>
@@ -302,7 +304,7 @@ select:focus{outline:none;border-color:var(--accent);}
       The same feature extraction pipeline runs: RMS normalize → extract 128 PSD bins + 26 MFCC values → StandardScaler normalize → classify.
       This is what deployment would look like — tap a cell, record it, get a health verdict in seconds.
     </div>
-    <label class="upload-zone" style="max-width:400px;display:block;margin-bottom:18px;" id="singleZone" onclick="document.getElementById('singleInput').click()">
+    <label class="upload-zone" style="max-width:400px;display:block;margin-bottom:18px;" id="singleZone" onclick="if(!this.classList.contains('loaded'))document.getElementById('singleInput').click()">
       <span class="uz-icon">🎵</span>
       <div class="uz-num">SINGLE HIT AUDIO</div>
       <div class="uz-hint">Click or drag to upload a .wav or .m4a recording<br>of a single percussion hit</div>
@@ -557,24 +559,48 @@ function plotWaveforms(canvas, signals, sr, title='') {
 
 function drawCM(canvas, cm, title='') {
   const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  // Scale font sizes relative to canvas size (base=180, scale up proportionally)
+  const scale=W/180;
   ctx.fillStyle='#0b1422';ctx.fillRect(0,0,W,H);
-  const labels=['Good','Bad'],PAD=36,cell=(Math.min(W,H)-PAD*2)/2;
+  const labels=['Good','Bad'],PAD=Math.round(48*scale),cell=(Math.min(W,H)-PAD*2)/2;
   const max=Math.max(cm[0][0],cm[0][1],cm[1][0],cm[1][1])||1;
-  if(title){ctx.fillStyle='#4e6d96';ctx.font='10px Space Mono';ctx.textAlign='center';ctx.fillText(title,W/2,13);}
-  for(let r=0;r<2;r++) for(let c=0;c<2;c++){
-    const v=cm[r][c],x=PAD+c*cell,y=PAD+r*cell,alpha=.1+.6*(v/max);
-    const col=r===c?'0,229,160':'255,77,109';
-    ctx.fillStyle=`rgba(${col},${alpha})`;ctx.fillRect(x,y,cell-2,cell-2);
-    ctx.fillStyle='#c0d5f0';ctx.font='bold 14px Space Mono';ctx.textAlign='center';
-    ctx.fillText(v,x+cell/2,y+cell/2-4);
-    ctx.font='10px DM Sans';ctx.fillStyle='#4e6d96';
-    ctx.fillText(`${(v/(cm[0][0]+cm[0][1]+cm[1][0]+cm[1][1])*100).toFixed(0)}%`,x+cell/2,y+cell/2+12);
+  const total=cm[0][0]+cm[0][1]+cm[1][0]+cm[1][1]||1;
+  if(title){
+    ctx.fillStyle='#7a9dc0';ctx.font=`${Math.round(11*scale)}px Space Mono`;
+    ctx.textAlign='center';ctx.fillText(title,W/2,Math.round(14*scale));
   }
-  ctx.fillStyle='#4e6d96';ctx.font='9px Space Mono';ctx.textAlign='center';
-  labels.forEach((l,i)=>{ctx.fillText(l,PAD+i*cell+cell/2,PAD-4);});
-  ctx.save();ctx.translate(PAD-8,PAD);
-  labels.forEach((l,i)=>{ctx.save();ctx.translate(0,i*cell+cell/2);ctx.rotate(-Math.PI/2);ctx.fillText(l,0,0);ctx.restore();});
-  ctx.restore();
+  // Predicted label (top)
+  ctx.fillStyle='#4e6d96';ctx.font=`${Math.round(9*scale)}px Space Mono`;ctx.textAlign='center';
+  ctx.fillText('Predicted',W/2,PAD-Math.round(18*scale));
+  labels.forEach((l,i)=>{ctx.fillText(l,PAD+i*cell+cell/2,PAD-Math.round(5*scale));});
+  // Actual label (left, rotated)
+  ctx.save();ctx.translate(Math.round(10*scale),H/2);ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='#4e6d96';ctx.font=`${Math.round(9*scale)}px Space Mono`;ctx.textAlign='center';
+  ctx.fillText('Actual',0,0);ctx.restore();
+  labels.forEach((l,i)=>{
+    ctx.save();ctx.translate(PAD-Math.round(6*scale),PAD+i*cell+cell/2);ctx.rotate(-Math.PI/2);
+    ctx.fillStyle='#4e6d96';ctx.font=`${Math.round(9*scale)}px Space Mono`;ctx.textAlign='center';
+    ctx.fillText(l,0,0);ctx.restore();
+  });
+  for(let r=0;r<2;r++) for(let c=0;c<2;c++){
+    const v=cm[r][c],x=PAD+c*cell,y=PAD+r*cell,alpha=.08+.65*(v/max);
+    const col=r===c?'0,229,160':'255,77,109';
+    // Cell background
+    ctx.fillStyle=`rgba(${col},${alpha})`;
+    ctx.beginPath();ctx.roundRect(x+2,y+2,cell-4,cell-4,Math.round(6*scale));ctx.fill();
+    // Count (large)
+    ctx.fillStyle='#e0eeff';ctx.font=`bold ${Math.round(22*scale)}px Space Mono`;ctx.textAlign='center';
+    ctx.fillText(v,x+cell/2,y+cell/2-Math.round(4*scale));
+    // Percentage (smaller, below count)
+    ctx.font=`${Math.round(11*scale)}px DM Sans`;ctx.fillStyle='rgba(192,213,240,.65)';
+    ctx.fillText(`(${(v/total*100).toFixed(1)}%)`,x+cell/2,y+cell/2+Math.round(16*scale));
+    // Label inside cell corner (TP/TN/FP/FN)
+    const corner=['TN','FP','FN','TP'][r*2+c];
+    const cornerCol=r===c?'rgba(0,229,160,.5)':'rgba(255,77,109,.5)';
+    ctx.font=`${Math.round(8*scale)}px Space Mono`;ctx.fillStyle=cornerCol;
+    ctx.textAlign='left';ctx.fillText(corner,x+Math.round(5*scale),y+Math.round(13*scale));
+  }
+  ctx.textAlign='left';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -608,9 +634,9 @@ function buildUploadGrid() {
   const g=document.getElementById('uploadGrid');g.innerHTML='';
   for(let i=0;i<5;i++){
     const id='zipInput'+i, zoneId='zipZone'+i;
-    g.innerHTML+=`<label class="upload-zone" id="${zoneId}" onclick="document.getElementById('${id}').click()">
+    g.innerHTML+=`<label class="upload-zone" id="${zoneId}" onclick="if(!this.classList.contains('loaded'))document.getElementById('${id}').click()">
       <span class="uz-icon">📁</span><div class="uz-num">ITERATION ${i+1}</div>
-      <div class="uz-hint">Click to upload ZIP</div>
+      <div class="uz-hint">Click to upload ZIP<br><span style="font-size:.6rem;color:var(--dim)" id="zipReplace${i}" style="display:none">click again to replace</span></div>
       <div class="uz-name" id="zipName${i}"></div>
       <input type="file" id="${id}" accept=".zip">
     </label>`;
@@ -784,9 +810,10 @@ async function trainModels(){
   // Confusion matrices
   html+=`<div class="card"><div class="card-title">CONFUSION MATRICES — TRAINING (left) vs VALIDATION (right)</div>
     <div style="font-size:.72rem;color:var(--dim);margin-bottom:12px">Green diagonal = correct predictions. Red off-diagonal = errors. A gap between training and validation is normal — it means the model has memorized some training patterns.</div>
-    <div style="display:grid;grid-template-columns:repeat(${rows.length*2},1fr);gap:10px">`;
-  rows.forEach(r=>{html+=`<canvas id="cmTr_${r.name}" width="180" height="180" style="width:100%;border-radius:6px;"></canvas>`;});
-  rows.forEach(r=>{html+=`<canvas id="cmVal_${r.name}" width="180" height="180" style="width:100%;border-radius:6px;"></canvas>`;});
+    <div style="margin-bottom:8px;font-family:var(--mono);font-size:.6rem;color:var(--dim)">← TRAINING &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; VALIDATION →</div>
+    <div style="display:grid;grid-template-columns:repeat(${rows.length*2},1fr);gap:12px">`;
+  rows.forEach(r=>{html+=`<canvas id="cmTr_${r.name}" width="320" height="320" style="width:100%;border-radius:8px;"></canvas>`;});
+  rows.forEach(r=>{html+=`<canvas id="cmVal_${r.name}" width="320" height="320" style="width:100%;border-radius:8px;"></canvas>`;});
   html+=`</div></div>`;
   res.innerHTML=html;
   rows.forEach(r=>{drawCM(document.getElementById('cmTr_'+r.name),r.cmTr,r.name+' Train');drawCM(document.getElementById('cmVal_'+r.name),r.cmVal,r.name+' Val');});
@@ -869,7 +896,7 @@ async function runInference(){
   // Confusion matrices
   html+=`<div class="card"><div class="card-title">CONFUSION MATRICES — HW2 TEST SET</div>
     <div class="cm-grid">`;
-  modelNames.forEach(name=>{html+=`<div><div style="font-family:var(--mono);font-size:.65rem;color:var(--dim);text-align:center;margin-bottom:6px">${name}</div><canvas id="infCM_${name}" width="200" height="200" style="width:100%;border-radius:6px;"></canvas></div>`;});
+  modelNames.forEach(name=>{html+=`<div><div style="font-family:var(--mono);font-size:.65rem;color:var(--dim);text-align:center;margin-bottom:6px">${name}</div><canvas id="infCM_${name}" width="320" height="320" style="width:100%;border-radius:8px;"></canvas></div>`;});
   html+=`</div></div>`;
   out.innerHTML=html;
   modelNames.forEach(name=>drawCM(document.getElementById('infCM_'+name),results[name].cm,`${name} (${(results[name].acc*100).toFixed(1)}%)`));

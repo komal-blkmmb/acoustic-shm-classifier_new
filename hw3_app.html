@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>// SHM CLASSIFIER — HW3</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --bg:#060b12;--surface:#0b1422;--surface2:#0f1c30;--border:#1a2d4a;
+  --accent:#00c8ff;--green:#00e5a0;--red:#ff4d6d;--amber:#ffb347;
+  --purple:#b47aff;--text:#c0d5f0;--dim:#4e6d96;
+  --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:20px;
+  background-image:radial-gradient(ellipse at 10% 5%,rgba(0,80,180,.08) 0%,transparent 55%),
+  radial-gradient(ellipse at 90% 95%,rgba(0,200,255,.05) 0%,transparent 55%);}
+header{max-width:980px;margin:0 auto 28px;display:flex;align-items:flex-end;justify-content:space-between;
+  border-bottom:1px solid var(--border);padding-bottom:14px;}
+.logo{font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--accent);letter-spacing:1px;}
+.logo span{color:var(--dim);font-weight:400;}
+.badge{font-family:var(--mono);font-size:.58rem;padding:4px 10px;border-radius:3px;letter-spacing:1.5px;
+  background:rgba(0,200,255,.07);border:1px solid rgba(0,200,255,.2);color:var(--accent);}
+.wrap{max-width:980px;margin:0 auto;}
+
+/* ── Step nav ── */
+.step-nav{display:flex;align-items:center;gap:0;margin-bottom:28px;position:relative;}
+.step-nav::before{content:'';position:absolute;top:18px;left:18px;right:18px;height:1px;background:var(--border);}
+.sn-item{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative;z-index:1;}
+.sn-dot{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);background:var(--bg);
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;
+  color:var(--dim);transition:all .3s;cursor:pointer;}
+.sn-item.active .sn-dot{border-color:var(--accent);color:var(--accent);background:rgba(0,200,255,.08);
+  box-shadow:0 0 12px rgba(0,200,255,.25);}
+.sn-item.done .sn-dot{border-color:var(--green);color:var(--green);background:rgba(0,229,160,.08);}
+.sn-label{font-size:.6rem;color:var(--dim);font-family:var(--mono);letter-spacing:.5px;text-align:center;line-height:1.4;white-space:nowrap;}
+.sn-item.active .sn-label{color:var(--accent);}
+.sn-item.done .sn-label{color:var(--green);}
+
+/* ── Step panels ── */
+.step{display:none;animation:fadeIn .3s ease;}
+.step.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.step-header{margin-bottom:20px;}
+.step-num{font-family:var(--mono);font-size:.62rem;color:var(--dim);letter-spacing:2px;margin-bottom:4px;}
+.step-title{font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--accent);}
+
+/* ── Explain box ── */
+.explain{background:rgba(0,200,255,.04);border:1px solid rgba(0,200,255,.15);border-left:3px solid var(--accent);
+  border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px;font-size:.82rem;line-height:1.75;color:var(--text);}
+.explain strong{color:var(--accent);font-weight:600;}
+.explain code{font-family:var(--mono);font-size:.72rem;background:rgba(0,200,255,.08);padding:1px 5px;border-radius:3px;color:var(--accent);}
+
+/* ── Cell grid ── */
+.cell-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:20px;}
+.cell-btn{padding:8px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface);
+  color:var(--dim);font-family:var(--mono);font-size:.65rem;cursor:pointer;transition:all .15s;text-align:center;}
+.cell-btn:hover{border-color:var(--text-dim);color:var(--text);}
+.cell-btn.bad{border-color:rgba(255,77,109,.5);background:rgba(255,77,109,.1);color:var(--red);}
+.cell-row-label{font-family:var(--mono);font-size:.6rem;color:var(--dim);text-align:center;padding:4px;}
+.cell-legend{display:flex;gap:20px;margin-bottom:16px;font-size:.75rem;}
+.legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle;}
+
+/* ── Upload zones ── */
+.upload-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:20px 10px;text-align:center;
+  cursor:pointer;transition:all .2s;background:var(--surface);position:relative;}
+.upload-zone:hover{border-color:rgba(0,200,255,.4);background:rgba(0,200,255,.03);}
+.upload-zone.loaded{border-style:solid;border-color:var(--green);background:rgba(0,229,160,.04);}
+.upload-zone.loaded:hover{background:rgba(0,229,160,.07);}
+.uz-num{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-bottom:6px;letter-spacing:1px;}
+.uz-icon{font-size:1.4rem;display:block;margin-bottom:6px;opacity:.5;}
+.uz-hint{font-size:.65rem;color:var(--dim);line-height:1.5;}
+.uz-name{font-family:var(--mono);font-size:.6rem;color:var(--green);margin-top:6px;word-break:break-all;}
+input[type=file]{display:none;}
+
+/* ── Buttons ── */
+.btn{padding:11px 28px;border:none;border-radius:8px;font-family:var(--mono);font-size:.78rem;
+  font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:hover{background:#33d4ff;box-shadow:0 4px 18px rgba(0,200,255,.3);}
+.btn-primary:disabled{opacity:.3;cursor:not-allowed;}
+.btn-outline{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+.btn-outline:hover{background:rgba(0,200,255,.08);}
+.btn-sm{padding:7px 16px;font-size:.65rem;}
+.btn-row{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap;}
+
+/* ── Progress ── */
+.prog-wrap{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:18px;}
+.prog-label{font-family:var(--mono);font-size:.68rem;color:var(--dim);margin-bottom:8px;}
+.prog-bg{background:var(--surface2);border-radius:3px;height:4px;overflow:hidden;}
+.prog-bar{height:100%;background:linear-gradient(90deg,#0066cc,var(--accent));border-radius:3px;
+  transition:width .3s ease;box-shadow:0 0 6px var(--accent);}
+
+/* ── Panels / cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px;}
+.card-title{font-family:var(--mono);font-size:.72rem;color:var(--accent);margin-bottom:12px;letter-spacing:.5px;}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.canvas-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px;overflow:hidden;}
+canvas{display:block;width:100%;height:auto;}
+
+/* ── Table ── */
+table{width:100%;border-collapse:collapse;font-size:.78rem;}
+th{font-family:var(--mono);font-size:.62rem;color:var(--dim);padding:8px 12px;text-align:left;
+  border-bottom:1px solid var(--border);letter-spacing:.5px;}
+td{padding:9px 12px;border-bottom:1px solid rgba(26,45,74,.5);}
+tr:last-child td{border-bottom:none;}
+.acc-good{color:var(--green);font-family:var(--mono);}
+.acc-warn{color:var(--amber);font-family:var(--mono);}
+.acc-bad{color:var(--red);font-family:var(--mono);}
+
+/* ── Checkboxes (model selection) ── */
+.model-checks{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.model-check{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:14px;cursor:pointer;transition:all .2s;}
+.model-check input{display:none;}
+.model-check.selected{border-color:rgba(0,200,255,.4);background:rgba(0,200,255,.05);}
+.model-icon{font-size:1.3rem;}
+.model-name{font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--text);}
+.model-desc{font-size:.65rem;color:var(--dim);margin-top:2px;line-height:1.4;}
+.check-box{width:16px;height:16px;border:2px solid var(--dim);border-radius:3px;flex-shrink:0;margin-left:auto;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.model-check.selected .check-box{border-color:var(--accent);background:var(--accent);}
+.check-box::after{content:'✓';font-size:.6rem;color:#000;display:none;}
+.model-check.selected .check-box::after{display:block;}
+
+/* ── Viz selectors ── */
+.selector-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
+select{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;
+  padding:8px 12px;font-family:var(--mono);font-size:.72rem;cursor:pointer;}
+select:focus{outline:none;border-color:var(--accent);}
+
+/* ── Inference result cards ── */
+.infer-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px;}
+.infer-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
+.infer-model{font-family:var(--mono);font-size:.65rem;color:var(--dim);margin-bottom:8px;}
+.infer-result{font-family:var(--mono);font-size:1.1rem;font-weight:700;margin-bottom:4px;}
+.infer-result.good{color:var(--green);}
+.infer-result.bad{color:var(--red);}
+.infer-conf{font-size:.68rem;color:var(--dim);}
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+
+/* ── Status chip ── */
+.status-chip{font-family:var(--mono);font-size:.65rem;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;}
+.chip-ok{background:rgba(0,229,160,.1);color:var(--green);border:1px solid rgba(0,229,160,.3);}
+.chip-warn{background:rgba(255,179,71,.1);color:var(--amber);border:1px solid rgba(255,179,71,.3);}
+.chip-err{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.3);}
+.chip-info{background:rgba(0,200,255,.1);color:var(--accent);border:1px solid rgba(0,200,255,.3);}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">// SHM CLASSIFIER <span>— HW3</span></div>
+    <div style="font-size:.65rem;color:var(--dim);margin-top:4px;font-family:var(--mono)">Structural Health Monitoring · KNN · DT · LR · SVM</div>
+  </div>
+  <div class="badge">ML SPRING 2026</div>
+</header>
+
+<div class="wrap">
+  <!-- Step nav -->
+  <div class="step-nav" id="stepNav">
+    <div class="sn-item active" data-step="1"><div class="sn-dot">01</div><div class="sn-label">Configure<br>Plate</div></div>
+    <div class="sn-item" data-step="2"><div class="sn-dot">02</div><div class="sn-label">Upload<br>Data</div></div>
+    <div class="sn-item" data-step="3"><div class="sn-dot">03</div><div class="sn-label">Inspect<br>Hits</div></div>
+    <div class="sn-item" data-step="4"><div class="sn-dot">04</div><div class="sn-label">Train<br>Models</div></div>
+    <div class="sn-item" data-step="5"><div class="sn-dot">05</div><div class="sn-label">Robustness<br>Test</div></div>
+    <div class="sn-item" data-step="6"><div class="sn-dot">06</div><div class="sn-label">Single Hit<br>Classify</div></div>
+  </div>
+
+  <!-- STEP 1: Configure plate -->
+  <div class="step active" id="step1">
+    <div class="step-header"><div class="step-num">STEP 01 / 06</div><div class="step-title">// CONFIGURE PLATE LAYOUT</div></div>
+    <div class="explain">
+      The plate has <strong>27 cells</strong> arranged in a 3×9 grid (rows 1-3, columns a-i).
+      <strong>Click cells to toggle</strong> them between healthy (blue) and damaged (red).
+      Damaged cells have a <strong>debonding defect</strong> — they sound different when tapped because the internal layer has separated.
+      The default selection matches the physically inspected cells from your lab.
+    </div>
+    <div class="cell-legend">
+      <span><span class="legend-dot" style="background:rgba(0,200,255,.3);border:1px solid var(--accent)"></span>Healthy (good)</span>
+      <span><span class="legend-dot" style="background:rgba(255,77,109,.3);border:1px solid var(--red)"></span>Damaged (bad)</span>
+    </div>
+    <div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:4px;text-align:center;">
+      <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span><span>i</span>
+    </div>
+    <div class="cell-grid" id="cellGrid"></div>
+    <div style="font-size:.78rem;color:var(--dim);margin-bottom:16px;">Selected damaged cells: <span id="badCount" style="color:var(--red);font-family:var(--mono)">8</span> / 27</div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(2)">Confirm Layout → Next</button>
+      <button class="btn btn-outline btn-sm" onclick="resetCells()">Reset Defaults</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Upload data -->
+  <div class="step" id="step2">
+    <div class="step-header"><div class="step-num">STEP 02 / 06</div><div class="step-title">// UPLOAD ITERATION DATA</div></div>
+    <div class="explain">
+      Upload the <strong>ZIP file(s)</strong> from each recording iteration. Each ZIP contains 27 audio files (one per cell), named like <code>1a.m4a</code>, <code>2g.m4a</code>, etc.
+      You don't need all 5 — even 1 iteration will work. Once uploaded, the app automatically <strong>detects each hit</strong> using energy thresholding and <strong>extracts 154 audio features</strong> (128 PSD bins + 26 MFCC values) from every hit.
+      This is the raw material your classifiers will learn from.
+    </div>
+    <div class="upload-grid" id="uploadGrid"></div>
+    <div id="procProg" style="display:none">
+      <div class="prog-wrap"><div class="prog-label" id="procLabel">Processing…</div><div class="prog-bg"><div class="prog-bar" id="procBar" style="width:0%"></div></div></div>
+    </div>
+    <div id="procStatus"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="processBtn" onclick="processAllZips()" disabled>⚙ Extract Features</button>
+      <button class="btn btn-outline btn-sm" onclick="goStep(1)">← Back</button>
+      <span id="dataReadyMsg" style="font-family:var(--mono);font-size:.65rem;color:var(--green);display:none">✓ Dataset ready</span>
+      <button class="btn btn-primary" id="toStep3Btn" style="display:none" onclick="goStep(3)">Inspect Hits →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Inspect hits -->
+  <div class="step" id="step3">
+    <div class="step-header"><div class="step-num">STEP 03 / 06</div><div class="step-title">// INSPECT EXTRACTED HITS</div></div>
+    <div class="explain">
+      Before training, verify that the hit extraction worked correctly. Select a cell and iteration to see <strong>all hits overlaid</strong> on the same time axis.
+      Good extraction = all hits look similar (same shape, same duration). Red-bordered hits differ significantly from the average — they may be echo artefacts or noise triggers.
+      The <strong>mean ± 1 std</strong> band shows how consistent the hits are.
+    </div>
+    <div class="selector-row">
+      <select id="vizIter"><option value="">-- Iteration --</option></select>
+      <select id="vizCell"><option value="">-- Cell --</option></select>
+      <button class="btn btn-primary btn-sm" onclick="showHits()">Show Hits</button>
+    </div>
+    <div id="vizOutput"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(4)">Looks Good → Train Models</button>
+      <button class="btn btn-outline btn-sm" onclick="goStep(2)">← Back</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: Train models -->
+  <div class="step" id="step4">
+    <div class="step-header"><div class="step-num">STEP 04 / 06</div><div class="step-title">// TRAIN CLASSIFIERS</div></div>
+    <div class="explain">
+      Select which models to train. The dataset is <strong>shuffled and split 70/30</strong> — 70% for training, 30% for validation.
+      Because both sets come from the same recording sessions, validation accuracy will be <em>high but optimistic</em> (the true unseen test happens in Step 5).
+      <br><br>
+      <strong>KNN</strong> finds the 5 most similar training hits and votes. <strong>Decision Tree</strong> learns if-then rules on features. <strong>Logistic Regression</strong> fits a linear probability boundary. <strong>SVM</strong> finds the widest possible margin between classes.
+    </div>
+    <div class="model-checks">
+      <label class="model-check selected" id="chk-KNN"><input type="checkbox" checked><span class="model-icon">📍</span><div><div class="model-name">KNN</div><div class="model-desc">k=5, Euclidean<br>distance voting</div></div><div class="check-box"></div></label>
+      <label class="model-check selected" id="chk-DT"><input type="checkbox" checked><span class="model-icon">🌿</span><div><div class="model-name">Decision Tree</div><div class="model-desc">CART, max<br>depth=6, Gini</div></div><div class="check-box"></div></label>
+      <label class="model-check selected" id="chk-LR"><input type="checkbox" checked><span class="model-icon">📈</span><div><div class="model-name">Logistic Reg.</div><div class="model-desc">Gradient descent<br>sigmoid boundary</div></div><div class="check-box"></div></label>
+      <label class="model-check selected" id="chk-SVM"><input type="checkbox" checked><span class="model-icon">⚡</span><div><div class="model-name">SVM</div><div class="model-desc">Linear, Pegasos<br>SGD optimizer</div></div><div class="check-box"></div></label>
+    </div>
+    <div style="font-size:.75rem;color:var(--dim);margin-bottom:16px;">Split: <span style="color:var(--accent);font-family:var(--mono)" id="splitInfo">—</span></div>
+    <div id="trainProg" style="display:none">
+      <div class="prog-wrap"><div class="prog-label" id="trainLabel">Training…</div><div class="prog-bg"><div class="prog-bar" id="trainBar" style="width:0%"></div></div></div>
+    </div>
+    <div id="trainResults"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="trainBtn" onclick="trainModels()">▶ Train Selected Models</button>
+      <button class="btn btn-outline btn-sm" onclick="goStep(3)">← Back</button>
+      <button class="btn btn-primary" id="toStep5Btn" style="display:none" onclick="goStep(5)">Test Robustness →</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: Robustness test -->
+  <div class="step" id="step5">
+    <div class="step-header"><div class="step-num">STEP 05 / 06</div><div class="step-title">// ROBUSTNESS TEST — HW2 DATA</div></div>
+    <div class="explain">
+      Now we test whether models <strong>generalize to new data</strong> collected in a different session (your HW2 dataset). Upload the HW2 ZIP — files should be named like <code>1a_hit1.wav</code>, <code>2g_hit3.wav</code>.
+      The models are used <strong>exactly as trained</strong> — no retraining. A big accuracy drop from Step 4 means the model learned <em>session-specific patterns</em> rather than true structural damage signatures.
+      The model with the <strong>smallest drop</strong> is the most robust.
+    </div>
+    <div style="margin-bottom:18px;">
+      <label class="upload-zone" style="max-width:320px;display:block;" id="infZone" onclick="document.getElementById('infInput').click()">
+        <span class="uz-icon">📦</span>
+        <div class="uz-num">HW2 INFERENCE DATA</div>
+        <div class="uz-hint">Click to upload the HW2 ZIP file<br>(individual hit .wav files inside)</div>
+        <div class="uz-name" id="infName"></div>
+        <input type="file" id="infInput" accept=".zip">
+      </label>
+    </div>
+    <div id="infProg" style="display:none">
+      <div class="prog-wrap"><div class="prog-label" id="infLabel">Processing…</div><div class="prog-bg"><div class="prog-bar" id="infBar" style="width:0%"></div></div></div>
+    </div>
+    <div id="infResults"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="infBtn" onclick="runInference()" disabled>▶ Process &amp; Classify All</button>
+      <button class="btn btn-outline btn-sm" onclick="goStep(4)">← Back</button>
+    </div>
+  </div>
+
+  <!-- STEP 6: Single hit classify -->
+  <div class="step" id="step6">
+    <div class="step-header"><div class="step-num">STEP 06 / 06</div><div class="step-title">// CLASSIFY A SINGLE HIT</div></div>
+    <div class="explain">
+      Upload <strong>any single percussion hit</strong> (.wav or .m4a) and all trained models will classify it instantly.
+      The same feature extraction pipeline runs: RMS normalize → extract 128 PSD bins + 26 MFCC values → StandardScaler normalize → classify.
+      This is what deployment would look like — tap a cell, record it, get a health verdict in seconds.
+    </div>
+    <label class="upload-zone" style="max-width:400px;display:block;margin-bottom:18px;" id="singleZone" onclick="document.getElementById('singleInput').click()">
+      <span class="uz-icon">🎵</span>
+      <div class="uz-num">SINGLE HIT AUDIO</div>
+      <div class="uz-hint">Click or drag to upload a .wav or .m4a recording<br>of a single percussion hit</div>
+      <div class="uz-name" id="singleName"></div>
+      <input type="file" id="singleInput" accept=".wav,.m4a,.mp3,.ogg,.flac">
+    </label>
+    <canvas id="singleCanvas" width="900" height="140" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:100%;margin-bottom:18px;"></canvas>
+    <div id="singleResults"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="singleBtn" onclick="classifySingle()" disabled>▶ Classify This Hit</button>
+      <button class="btn btn-outline btn-sm" onclick="goStep(5)">← Back</button>
+    </div>
+  </div>
+</div><!-- .wrap -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// GLOBAL STATE
+// ═══════════════════════════════════════════════════════════════
+const ST = {
+  badCells: new Set(['1d','1e','1i','2b','2g','3b','3d','3g']),
+  allCells: ['1a','1b','1c','1d','1e','1f','1g','1h','1i',
+             '2a','2b','2c','2d','2e','2f','2g','2h','2i',
+             '3a','3b','3c','3d','3e','3f','3g','3h','3i'],
+  zips: Array(5).fill(null),      // {zip, name}
+  iterData: Array(5).fill(null),  // {hits:{cell:Float32Array[]}, feats:{cell:number[][]}, labels:{cell:0|1}}
+  dataset: null,                  // {X,y,nTrain,nVal}
+  nSamples: 14400,                // fixed signal length (0.3s @ 48kHz)
+  targetSR: 48000,
+  scaler: null,
+  models: {},
+  currentStep: 1,
+  audioCtx: null,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// FFT (Cooley-Tukey radix-2)
+// ═══════════════════════════════════════════════════════════════
+function _fft(re, im) {
+  const N = re.length;
+  for (let i=1,j=0;i<N;i++){let b=N>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];}}
+  for (let len=2;len<=N;len<<=1){const a=-2*Math.PI/len,wR=Math.cos(a),wI=Math.sin(a);for(let i=0;i<N;i+=len){let cR=1,cI=0;for(let j=0;j<len>>1;j++){const uR=re[i+j],uI=im[i+j],h=len>>1,vR=re[i+j+h]*cR-im[i+j+h]*cI,vI=re[i+j+h]*cI+im[i+j+h]*cR;re[i+j]=uR+vR;im[i+j]=uI+vI;re[i+j+h]=uR-vR;im[i+j+h]=uI-vI;const nR=cR*wR-cI*wI;cI=cR*wI+cI*wR;cR=nR;}}}
+}
+function magSpec(seg, nFFT) {
+  const re=new Float64Array(nFFT),im=new Float64Array(nFFT),L=Math.min(seg.length,nFFT);
+  for(let i=0;i<L;i++) re[i]=seg[i]*(0.54-0.46*Math.cos(2*Math.PI*i/(nFFT-1)));
+  _fft(re,im);
+  const m=new Float32Array(nFFT/2+1);
+  for(let i=0;i<=nFFT/2;i++) m[i]=Math.sqrt(re[i]*re[i]+im[i]*im[i]);
+  return m;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SIGNAL PROCESSING
+// ═══════════════════════════════════════════════════════════════
+function fixLength(sig, n) {
+  if(sig.length===n) return sig;
+  if(sig.length>n) return sig.slice(0,n);
+  const out=new Float32Array(n); out.set(sig); return out;
+}
+
+function welchPSD(sig, nFFT=1024, hop=512, nBins=128) {
+  const nSeg=Math.max(1,Math.floor((sig.length-nFFT)/hop)+1);
+  const psd=new Float64Array(nFFT/2+1);
+  for(let s=0;s<nSeg;s++){const m=magSpec(sig.subarray(s*hop,s*hop+nFFT),nFFT);for(let i=0;i<m.length;i++)psd[i]+=m[i]*m[i];}
+  const out=new Float32Array(nBins);
+  let psdSum=0; for(const v of psd) psdSum+=v;
+  for(let i=0;i<nBins;i++){out[i]=Math.log1p(psd[i]/nSeg);} // log compress
+  // normalize to sum=1 for cross-session invariance
+  let s=0; for(const v of out) s+=v;
+  if(s>1e-8) for(let i=0;i<nBins;i++) out[i]/=s;
+  return out;
+}
+
+// Mel filterbank (built once, cached)
+let _melFB=null, _melFFT=0, _melSR=0;
+function getMelFB(nMFCC,nFFT,sr) {
+  if(_melFB&&_melFFT===nFFT&&_melSR===sr) return _melFB;
+  const nFilters=nMFCC+14; // use more filters than MFCCs
+  const hz2m=f=>2595*Math.log10(1+f/700), m2hz=m=>700*(10**(m/2595)-1);
+  const mMin=hz2m(0),mMax=hz2m(sr/2);
+  const bins=Array.from({length:nFilters+2},(_,i)=>{const m=mMin+i*(mMax-mMin)/(nFilters+1);return Math.round(m2hz(m)*(nFFT/2+1)/(sr/2));});
+  const nb=nFFT/2+1;
+  _melFB=Array.from({length:nFilters},(_,m)=>{const f=new Float32Array(nb);for(let k=bins[m];k<bins[m+1]&&k<nb;k++)f[k]=(k-bins[m])/(bins[m+1]-bins[m]||1);for(let k=bins[m+1];k<=bins[m+2]&&k<nb;k++)f[k]=(bins[m+2]-k)/(bins[m+2]-bins[m+1]||1);return f;});
+  _melFFT=nFFT; _melSR=sr; return _melFB;
+}
+
+function dct2(x,nC) {
+  const N=x.length,out=new Float32Array(nC);
+  for(let k=0;k<nC;k++){let s=0;for(let n=0;n<N;n++)s+=x[n]*Math.cos(Math.PI/N*k*(n+.5));out[k]=s;}
+  return out;
+}
+
+function computeMFCC(sig,sr,nMFCC=13,nFFT=1024,hop=256) {
+  const fb=getMelFB(nMFCC,nFFT,sr);
+  const frames=[]; for(let i=0;i+nFFT<=sig.length;i+=hop) frames.push(magSpec(sig.subarray(i,i+nFFT),nFFT));
+  if(!frames.length){return{mean:new Float32Array(nMFCC),std:new Float32Array(nMFCC)};}
+  const mfccs=frames.map(m=>{const mel=fb.map(f=>{let s=0;for(let i=0;i<f.length;i++)s+=m[i]*f[i];return Math.log(Math.max(s,1e-10));});return dct2(mel,nMFCC);});
+  const mean=new Float32Array(nMFCC),std=new Float32Array(nMFCC);
+  for(let c=0;c<nMFCC;c++){let s=0,s2=0;for(const f of mfccs){s+=f[c];s2+=f[c]*f[c];}mean[c]=s/mfccs.length;std[c]=Math.sqrt(Math.max(0,s2/mfccs.length-mean[c]*mean[c]));}
+  return {mean,std};
+}
+
+function detectOnsets(sig,sr,mult=2.0,minGap=0.3,fLen=2048,hop=512) {
+  const nF=Math.floor((sig.length-fLen)/hop)+1;
+  const rms=new Float32Array(nF);
+  for(let i=0;i<nF;i++){let s=0;for(let j=0;j<fLen;j++)s+=sig[i*hop+j]**2;rms[i]=Math.sqrt(s/fLen);}
+  const mean=rms.reduce((a,b)=>a+b,0)/nF;
+  const thr=mean*mult,loud=rms.map(v=>v>thr?1:0);
+  const out=[],minS=Math.round(minGap*sr);
+  for(let i=1;i<nF;i++) if(loud[i-1]===0&&loud[i]===1){const s=i*hop;if(!out.length||s-out[out.length-1]>=minS)out.push(s);}
+  return out;
+}
+
+function trimTail(hit,sr,thr=0.05) {
+  const fLen=512,hop=128,nF=Math.floor((hit.length-fLen)/hop)+1;
+  if(nF<=0) return hit;
+  let peak=0;const rms=new Float32Array(nF);
+  for(let i=0;i<nF;i++){let s=0;for(let j=0;j<fLen;j++)s+=hit[i*hop+j]**2;rms[i]=Math.sqrt(s/fLen);if(rms[i]>peak)peak=rms[i];}
+  const th=peak*thr; let last=0;
+  for(let i=nF-1;i>=0;i--) if(rms[i]>th){last=i;break;}
+  const end=Math.min(hit.length,Math.max(Math.round(.05*sr),last*hop+Math.round(.03*sr)));
+  return hit.slice(0,end);
+}
+
+function extractFeatures(sig,sr) {
+  let rms=0; for(const v of sig) rms+=v*v; rms=Math.sqrt(rms/sig.length);
+  const norm=rms>1e-8?sig.map(v=>v/rms):sig;
+  // DC removal
+  let mean=0; for(const v of norm) mean+=v; mean/=norm.length;
+  const dc=norm.map(v=>v-mean);
+  const fixed=fixLength(dc,ST.nSamples);
+  const psd=welchPSD(fixed,1024,512,128);
+  const {mean:mfccM,std:mfccS}=computeMFCC(fixed,sr,13,1024,256);
+  const feat=new Float32Array(154);
+  feat.set(psd,0); feat.set(mfccM,128); feat.set(mfccS,141);
+  return feat;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO DECODING
+// ═══════════════════════════════════════════════════════════════
+function getAudioCtx() {
+  if(!ST.audioCtx) ST.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  return ST.audioCtx;
+}
+async function decodeAudio(buf) {
+  const ctx=getAudioCtx();
+  const decoded=await ctx.decodeAudioData(buf.slice(0));
+  const len=decoded.length;
+  let mono;
+  if(decoded.numberOfChannels===1){mono=decoded.getChannelData(0).slice();}
+  else{mono=new Float32Array(len);for(let c=0;c<decoded.numberOfChannels;c++){const ch=decoded.getChannelData(c);for(let i=0;i<len;i++)mono[i]+=ch[i];}for(let i=0;i<len;i++)mono[i]/=decoded.numberOfChannels;}
+  return {signal:mono,sr:decoded.sampleRate};
+}
+
+// Parse cell name like "1a", "1A", "A1", "1 h" → "1a" or null
+function parseCellName(stem) {
+  const c=stem.toLowerCase().replace(/[\s_\-]/g,'');
+  let m=c.match(/^(\d+)([a-z])$/); if(m)return m[1]+m[2];
+  m=c.match(/^([a-z])(\d+)$/); if(m)return m[2]+m[1];
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ML MODELS
+// ═══════════════════════════════════════════════════════════════
+class StandardScaler {
+  fit(X){const n=X.length,d=X[0].length;this.u=new Float32Array(d);this.s=new Float32Array(d);for(let j=0;j<d;j++){let a=0,b=0;for(let i=0;i<n;i++){a+=X[i][j];b+=X[i][j]*X[i][j];}this.u[j]=a/n;this.s[j]=Math.sqrt(Math.max(1e-10,b/n-(a/n)**2));}return this;}
+  tr(X){return X.map(r=>Array.from(r,( v,j)=>(v-this.u[j])/this.s[j]));}
+  fitTr(X){this.fit(X);return this.tr(X);}
+}
+
+class KNN {
+  constructor(k=5){this.k=k;}
+  fit(X,y){this.X=X;this.y=y;return this;}
+  predict(X){const n=this.X.length;return X.map(x=>{const d=new Float32Array(n);for(let i=0;i<n;i++){let s=0;for(let j=0;j<x.length;j++){const diff=x[j]-this.X[i][j];s+=diff*diff;}d[i]=s;}const idx=Array.from({length:n},(_,i)=>i).sort((a,b)=>d[a]-d[b]);let v0=0,v1=0;for(let i=0;i<this.k;i++){this.y[idx[i]]===0?v0++:v1++;}return v1>=v0?1:0;});}
+}
+
+class DT {
+  constructor(maxD=6){this.maxD=maxD;}
+  _gini(y){const n=y.length;if(!n)return 0;let c0=0;for(const v of y)if(v===0)c0++;const p=c0/n;return 1-p*p-(1-p)*(1-p);}
+  _build(X,y,d){const n=X.length,maj=y.filter(v=>v===1).length>=y.length/2?1:0;if(d>=this.maxD||n<4||new Set(y).size===1)return{l:true,v:maj};const dim=X[0].length,nF=Math.max(1,Math.round(Math.sqrt(dim)));const feats=[];for(let i=0;i<dim;i++)feats.push(i);feats.sort(()=>Math.random()-.5);const fs=feats.slice(0,nF);let bG=-1,bF=0,bT=0;const pG=this._gini(y);for(const f of fs){const vals=[...new Set(X.map(x=>x[f]))].sort((a,b)=>a-b);for(let t=0;t<vals.length-1;t++){const th=(vals[t]+vals[t+1])/2;const ly=[],ry=[];for(let i=0;i<n;i++)(X[i][f]<=th?ly:ry).push(y[i]);if(!ly.length||!ry.length)continue;const g=pG-(ly.length/n)*this._gini(ly)-(ry.length/n)*this._gini(ry);if(g>bG){bG=g;bF=f;bT=th;}}}if(bG<=0)return{l:true,v:maj};const lX=[],lY=[],rX=[],rY=[];for(let i=0;i<n;i++){if(X[i][bF]<=bT){lX.push(X[i]);lY.push(y[i]);}else{rX.push(X[i]);rY.push(y[i]);}}return{l:false,f:bF,t:bT,L:this._build(lX,lY,d+1),R:this._build(rX,rY,d+1)};}
+  _pred(x,nd){if(nd.l)return nd.v;return x[nd.f]<=nd.t?this._pred(x,nd.L):this._pred(x,nd.R);}
+  fit(X,y){this.tree=this._build(X,y,0);return this;}
+  predict(X){return X.map(x=>this._pred(x,this.tree));}
+}
+
+class LR {
+  constructor(it=400,lr=0.05,C=1){this.it=it;this.lr=lr;this.C=C;}
+  fit(X,y){const n=X.length,d=X[0].length;this.w=new Float32Array(d);this.b=0;
+    for(let t=0;t<this.it;t++){const dw=new Float32Array(d);let db=0;for(let i=0;i<n;i++){const z=X[i].reduce((s,v,j)=>s+v*this.w[j],this.b),p=1/(1+Math.exp(-z)),e=p-y[i];for(let j=0;j<d;j++)dw[j]+=e*X[i][j];db+=e;}for(let j=0;j<d;j++)this.w[j]-=this.lr*(dw[j]/n+this.w[j]/this.C);this.b-=this.lr*db/n;}return this;}
+  predict(X){return X.map(x=>{const z=x.reduce((s,v,j)=>s+v*this.w[j],this.b);return 1/(1+Math.exp(-z))>=.5?1:0;});}
+}
+
+class SVM {
+  constructor(C=1,it=2000){this.C=C;this.it=it;}
+  fit(X,y){const n=X.length,d=X[0].length;this.w=new Float32Array(d);this.b=0;const ym=y.map(v=>v===1?1:-1);
+    for(let t=1;t<=this.it;t++){const lr=1/(0.01*t),i=Math.floor(Math.random()*n);const z=ym[i]*(X[i].reduce((s,v,j)=>s+v*this.w[j],this.b));if(z<1){for(let j=0;j<d;j++)this.w[j]=(1-lr*0.01)*this.w[j]+lr*this.C*ym[i]*X[i][j];this.b+=lr*this.C*ym[i];}else{for(let j=0;j<d;j++)this.w[j]*=(1-lr*0.01);}}return this;}
+  predict(X){return X.map(x=>x.reduce((s,v,j)=>s+v*this.w[j],this.b)>=0?1:0);}
+}
+
+function confMatrix(yTrue,yPred){const cm=[[0,0],[0,0]];for(let i=0;i<yTrue.length;i++)cm[yTrue[i]][yPred[i]]++;return cm;}
+function accuracy(yTrue,yPred){let c=0;for(let i=0;i<yTrue.length;i++)if(yTrue[i]===yPred[i])c++;return c/yTrue.length;}
+
+function stratifiedSplit(X,y,testFrac=.3,seed=42){
+  let s=seed; const rng=()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};
+  const idx0=[],idx1=[];y.forEach((v,i)=>v===0?idx0.push(i):idx1.push(i));
+  [idx0,idx1].forEach(arr=>{for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}});
+  const n0v=Math.round(idx0.length*testFrac),n1v=Math.round(idx1.length*testFrac);
+  const valIdx=[...idx0.slice(0,n0v),...idx1.slice(0,n1v)];
+  const trainIdx=[...idx0.slice(n0v),...idx1.slice(n1v)];
+  return {trainIdx,valIdx};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CANVAS PLOTTING
+// ═══════════════════════════════════════════════════════════════
+function plotWaveforms(canvas, signals, sr, title='') {
+  const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0b1422'; ctx.fillRect(0,0,W,H);
+  if(!signals.length) return;
+  const maxLen=Math.max(...signals.map(s=>s.length));
+  const PAD={l:6,r:6,t:20,b:6};
+  const PW=W-PAD.l-PAD.r,PH=H-PAD.t-PAD.b;
+  // title
+  if(title){ctx.fillStyle='#4e6d96';ctx.font='11px Space Mono';ctx.fillText(title,PAD.l,14);}
+  // axes
+  ctx.strokeStyle='#1a2d4a';ctx.lineWidth=.5;
+  ctx.beginPath();ctx.moveTo(PAD.l,H/2);ctx.lineTo(W-PAD.r,H/2);ctx.stroke();
+  // waveforms
+  const colors=['#00c8ff','#00e5a0','#ffb347','#ff4d6d','#b47aff','#33d4ff','#4dffb4'];
+  signals.forEach((sig,si)=>{
+    ctx.beginPath();ctx.strokeStyle=colors[si%colors.length];ctx.globalAlpha=.45;ctx.lineWidth=.8;
+    for(let i=0;i<PW;i++){const x=Math.floor(i/PW*sig.length),v=sig[x];const px=PAD.l+i,py=PAD.t+PH*.5-v*PH*.45;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+    ctx.stroke();
+  });
+  ctx.globalAlpha=1;
+  // mean±std overlay
+  const maxL=Math.max(...signals.map(s=>s.length));
+  const mean=new Float32Array(PW),std=new Float32Array(PW);
+  for(let i=0;i<PW;i++){const xi=Math.floor(i/PW*maxL);let s=0,s2=0,c=0;signals.forEach(sig=>{if(xi<sig.length){s+=sig[xi];s2+=sig[xi]*sig[xi];c++;}});if(c){mean[i]=s/c;std[i]=Math.sqrt(Math.max(0,s2/c-(s/c)**2));}}
+  // std band
+  ctx.beginPath();for(let i=0;i<PW;i++){const py=PAD.t+PH*.5-(mean[i]+std[i])*PH*.45;i===0?ctx.moveTo(PAD.l+i,py):ctx.lineTo(PAD.l+i,py);}
+  for(let i=PW-1;i>=0;i--){const py=PAD.t+PH*.5-(mean[i]-std[i])*PH*.45;ctx.lineTo(PAD.l+i,py);}
+  ctx.closePath();ctx.fillStyle='rgba(0,200,255,.1)';ctx.fill();
+  // mean line
+  ctx.beginPath();ctx.strokeStyle='#00c8ff';ctx.lineWidth=1.5;ctx.globalAlpha=.85;
+  for(let i=0;i<PW;i++){const py=PAD.t+PH*.5-mean[i]*PH*.45;i===0?ctx.moveTo(PAD.l+i,py):ctx.lineTo(PAD.l+i,py);}
+  ctx.stroke();ctx.globalAlpha=1;
+}
+
+function drawCM(canvas, cm, title='') {
+  const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0b1422';ctx.fillRect(0,0,W,H);
+  const labels=['Good','Bad'],PAD=36,cell=(Math.min(W,H)-PAD*2)/2;
+  const max=Math.max(cm[0][0],cm[0][1],cm[1][0],cm[1][1])||1;
+  if(title){ctx.fillStyle='#4e6d96';ctx.font='10px Space Mono';ctx.textAlign='center';ctx.fillText(title,W/2,13);}
+  for(let r=0;r<2;r++) for(let c=0;c<2;c++){
+    const v=cm[r][c],x=PAD+c*cell,y=PAD+r*cell,alpha=.1+.6*(v/max);
+    const col=r===c?'0,229,160':'255,77,109';
+    ctx.fillStyle=`rgba(${col},${alpha})`;ctx.fillRect(x,y,cell-2,cell-2);
+    ctx.fillStyle='#c0d5f0';ctx.font='bold 14px Space Mono';ctx.textAlign='center';
+    ctx.fillText(v,x+cell/2,y+cell/2-4);
+    ctx.font='10px DM Sans';ctx.fillStyle='#4e6d96';
+    ctx.fillText(`${(v/(cm[0][0]+cm[0][1]+cm[1][0]+cm[1][1])*100).toFixed(0)}%`,x+cell/2,y+cell/2+12);
+  }
+  ctx.fillStyle='#4e6d96';ctx.font='9px Space Mono';ctx.textAlign='center';
+  labels.forEach((l,i)=>{ctx.fillText(l,PAD+i*cell+cell/2,PAD-4);});
+  ctx.save();ctx.translate(PAD-8,PAD);
+  labels.forEach((l,i)=>{ctx.save();ctx.translate(0,i*cell+cell/2);ctx.rotate(-Math.PI/2);ctx.fillText(l,0,0);ctx.restore();});
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 1 — CELL GRID
+// ═══════════════════════════════════════════════════════════════
+function buildCellGrid() {
+  const grid=document.getElementById('cellGrid');
+  grid.innerHTML='';
+  const rows=[1,2,3];
+  rows.forEach(r=>{
+    const lbl=document.createElement('div');
+    lbl.className='cell-row-label';lbl.textContent='Row '+r;
+    // Actually just add cells directly
+    ST.allCells.filter(c=>c[0]==r).forEach(cell=>{
+      const btn=document.createElement('button');
+      btn.className='cell-btn'+(ST.badCells.has(cell)?' bad':'');
+      btn.textContent=cell;btn.dataset.cell=cell;
+      btn.onclick=()=>{ST.badCells.has(cell)?ST.badCells.delete(cell):ST.badCells.add(cell);btn.classList.toggle('bad');updateBadCount();};
+      grid.appendChild(btn);
+    });
+  });
+  updateBadCount();
+}
+function updateBadCount(){document.getElementById('badCount').textContent=ST.badCells.size;}
+function resetCells(){ST.badCells=new Set(['1d','1e','1i','2b','2g','3b','3d','3g']);buildCellGrid();}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 2 — UPLOAD & PROCESS
+// ═══════════════════════════════════════════════════════════════
+function buildUploadGrid() {
+  const g=document.getElementById('uploadGrid');g.innerHTML='';
+  for(let i=0;i<5;i++){
+    const id='zipInput'+i, zoneId='zipZone'+i;
+    g.innerHTML+=`<label class="upload-zone" id="${zoneId}" onclick="document.getElementById('${id}').click()">
+      <span class="uz-icon">📁</span><div class="uz-num">ITERATION ${i+1}</div>
+      <div class="uz-hint">Click to upload ZIP</div>
+      <div class="uz-name" id="zipName${i}"></div>
+      <input type="file" id="${id}" accept=".zip">
+    </label>`;
+  }
+  for(let i=0;i<5;i++){
+    document.getElementById('zipInput'+i).addEventListener('change',e=>{
+      const f=e.target.files[0]; if(!f) return;
+      ST.zips[i]={file:f,name:f.name};
+      document.getElementById('zipName'+i).textContent=f.name;
+      document.getElementById('zipZone'+i).classList.add('loaded');
+      document.getElementById('processBtn').disabled=false;
+      checkZipsReady();
+    });
+  }
+}
+function checkZipsReady(){const ok=ST.zips.some(z=>z);document.getElementById('processBtn').disabled=!ok;}
+
+async function processAllZips() {
+  document.getElementById('processBtn').disabled=true;
+  document.getElementById('procProg').style.display='block';
+  const status=document.getElementById('procStatus');status.innerHTML='';
+  const allX=[],allY=[];
+  let totalHits=0;
+  for(let i=0;i<5;i++){
+    if(!ST.zips[i]){ST.iterData[i]=null;continue;}
+    setProc(`Processing iteration ${i+1}…`,((i)/5)*100);
+    await sleep(10);
+    try{
+      const zip=await JSZip.loadAsync(ST.zips[i].file);
+      const hits={},feats={};
+      const entries=Object.values(zip.files).filter(f=>!f.dir);
+      let done=0;
+      for(const entry of entries){
+        const ext=entry.name.split('.').pop().toLowerCase();
+        if(!['wav','m4a','mp3','ogg','flac'].includes(ext)) continue;
+        const stem=entry.name.split('/').pop().replace(/\.[^.]+$/,'');
+        const cell=parseCellName(stem); if(!cell||!ST.allCells.includes(cell)) continue;
+        const label=ST.badCells.has(cell)?1:0;
+        try{
+          const buf=await entry.async('arraybuffer');
+          const {signal,sr}=await decodeAudio(buf);
+          const onsets=detectOnsets(signal,sr);
+          if(!onsets.length) continue;
+          const cellHits=[];
+          for(const onset of onsets){
+            const pre=Math.round(.02*sr),post=Math.round(.8*sr);
+            const start=Math.max(0,onset-pre),end=Math.min(signal.length,onset+post);
+            let hit=signal.slice(start,end);
+            hit=trimTail(hit,sr,.05);
+            if(hit.length<Math.round(.03*sr)) continue;
+            cellHits.push(new Float32Array(hit));
+          }
+          if(cellHits.length){
+            hits[cell]=cellHits;
+            feats[cell]=cellHits.map(h=>Array.from(extractFeatures(h,sr)));
+            cellHits.forEach((_,hi)=>{allX.push(feats[cell][hi]);allY.push(label);totalHits++;});
+          }
+        }catch(e){console.warn('Skip',entry.name,e);}
+        done++;
+        setProc(`Iteration ${i+1}: processing ${done}/${entries.length} files…`,((i+done/entries.length)/5)*100);
+        await sleep(0);
+      }
+      ST.iterData[i]={hits,feats};
+      status.innerHTML+=`<div style="margin-bottom:6px"><span class="status-chip chip-ok">✓ Iteration ${i+1}</span> <span style="font-size:.72rem;color:var(--dim)">${Object.keys(hits).length} cells · ${Object.values(hits).reduce((s,h)=>s+h.length,0)} hits</span></div>`;
+    }catch(e){status.innerHTML+=`<div><span class="status-chip chip-err">✗ Iteration ${i+1}</span> <span style="font-size:.72rem;color:var(--dim)">${e.message}</span></div>`;}
+  }
+  if(allX.length<10){setProc('Error: not enough data',0);document.getElementById('processBtn').disabled=false;return;}
+  ST.dataset={X:allX,y:allY};
+  // Update step 4 split info
+  document.getElementById('splitInfo').textContent=`${allX.length} hits total — ~${Math.round(allX.length*.7)} train / ~${Math.round(allX.length*.3)} val`;
+  populateVizSelectors();
+  setProc('Done!',100);
+  document.getElementById('dataReadyMsg').style.display='inline';
+  document.getElementById('toStep3Btn').style.display='inline-block';
+  document.getElementById('processBtn').disabled=false;
+  await sleep(500);
+  document.getElementById('procProg').style.display='none';
+}
+function setProc(label,pct){document.getElementById('procLabel').textContent=label;document.getElementById('procBar').style.width=pct+'%';}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 3 — VISUALIZE HITS
+// ═══════════════════════════════════════════════════════════════
+function populateVizSelectors(){
+  const iterSel=document.getElementById('vizIter'),cellSel=document.getElementById('vizCell');
+  iterSel.innerHTML='<option value="">-- Iteration --</option>';
+  for(let i=0;i<5;i++) if(ST.iterData[i]) iterSel.innerHTML+=`<option value="${i}">Iteration ${i+1}</option>`;
+  cellSel.innerHTML='<option value="">-- Cell --</option>';
+  ST.allCells.forEach(c=>{const bad=ST.badCells.has(c);cellSel.innerHTML+=`<option value="${c}">${c} (${bad?'BAD':'GOOD'})</option>`;});
+}
+
+async function showHits(){
+  const iterIdx=parseInt(document.getElementById('vizIter').value);
+  const cell=document.getElementById('vizCell').value;
+  const out=document.getElementById('vizOutput');
+  if(isNaN(iterIdx)||!cell||!ST.iterData[iterIdx]){out.innerHTML='<div class="explain">Select an iteration and cell above.</div>';return;}
+  const data=ST.iterData[iterIdx];
+  if(!data.hits[cell]){out.innerHTML=`<div class="explain">No hits found for cell <code>${cell}</code> in that iteration. It may have been skipped during processing.</div>`;return;}
+  const sigs=data.hits[cell];
+  const cond=ST.badCells.has(cell)?'BAD':'GOOD';
+  const color=cond==='BAD'?'var(--red)':'var(--green)';
+  out.innerHTML=`
+    <div style="margin-bottom:10px"><span class="status-chip ${cond==='BAD'?'chip-err':'chip-ok'}">${cell.toUpperCase()} — ${cond}</span> <span style="font-size:.72rem;color:var(--dim)">${sigs.length} hits extracted</span></div>
+    <div class="card">
+      <div class="card-title">ALL HITS OVERLAID — ${cell.toUpperCase()} (iteration ${parseInt(document.getElementById('vizIter').value)+1})</div>
+      <div style="font-size:.72rem;color:var(--dim);margin-bottom:10px">All ${sigs.length} individual hits plotted together. Consistent shape = good extraction. The cyan line is the mean waveform; the shaded band is ±1 std deviation.</div>
+      <canvas id="vizCanvas" width="900" height="180" style="width:100%;border-radius:6px;"></canvas>
+    </div>`;
+  const cv=document.getElementById('vizCanvas');
+  plotWaveforms(cv,sigs,48000,`Cell ${cell.toUpperCase()} — ${sigs.length} hits`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 4 — TRAIN MODELS
+// ═══════════════════════════════════════════════════════════════
+document.querySelectorAll('.model-check').forEach(el=>{
+  el.addEventListener('click',()=>el.classList.toggle('selected'));
+});
+
+async function trainModels(){
+  if(!ST.dataset){alert('Process data first (Step 2).');return;}
+  const selected=[];
+  if(document.getElementById('chk-KNN').classList.contains('selected')) selected.push('KNN');
+  if(document.getElementById('chk-DT').classList.contains('selected')) selected.push('DT');
+  if(document.getElementById('chk-LR').classList.contains('selected')) selected.push('LR');
+  if(document.getElementById('chk-SVM').classList.contains('selected')) selected.push('SVM');
+  if(!selected.length){alert('Select at least one model.');return;}
+
+  document.getElementById('trainBtn').disabled=true;
+  document.getElementById('trainProg').style.display='block';
+  const res=document.getElementById('trainResults');res.innerHTML='';
+
+  const {X,y}=ST.dataset;
+  const {trainIdx,valIdx}=stratifiedSplit(X,y,.3);
+  const Xtr=trainIdx.map(i=>X[i]),ytr=trainIdx.map(i=>y[i]);
+  const Xval=valIdx.map(i=>X[i]),yval=valIdx.map(i=>y[i]);
+
+  setTrain('Scaling features…',5); await sleep(10);
+  const scaler=new StandardScaler();
+  const XtrS=scaler.fitTr(Xtr);
+  const XvalS=scaler.tr(Xval);
+  ST.scaler=scaler;
+
+  const rows=[];
+  const modelMap={KNN:()=>new KNN(5),DT:()=>new DT(6),LR:()=>new LR(400,.05,1),SVM:()=>new SVM(1,2000)};
+
+  for(let mi=0;mi<selected.length;mi++){
+    const name=selected[mi];
+    setTrain(`Training ${name}… (${mi+1}/${selected.length})`,10+mi/selected.length*80);
+    await sleep(20);
+    const clf=modelMap[name]().fit(XtrS,ytr);
+    ST.models[name]=clf;
+    const predTr=clf.predict(XtrS),predVal=clf.predict(XvalS);
+    const accTr=accuracy(ytr,predTr),accVal=accuracy(yval,predVal);
+    const drop=(accTr-accVal)*100;
+    rows.push({name,accTr,accVal,drop,cmTr:confMatrix(ytr,predTr),cmVal:confMatrix(yval,predVal)});
+    await sleep(0);
+  }
+
+  setTrain('Done!',100);
+  // Render results table
+  let html=`<div class="card"><div class="card-title">TRAINING RESULTS</div>
+    <table><tr><th>Model</th><th>Train Acc</th><th>Val Acc</th><th>Train→Val Drop</th></tr>`;
+  rows.forEach(r=>{
+    const cls=r.accVal>.90?'acc-good':r.accVal>.75?'acc-warn':'acc-bad';
+    const drCls=r.drop<5?'acc-good':r.drop<15?'acc-warn':'acc-bad';
+    html+=`<tr><td style="font-family:var(--mono)">${r.name}</td><td class="${cls}">${(r.accTr*100).toFixed(2)}%</td><td class="${cls}">${(r.accVal*100).toFixed(2)}%</td><td class="${drCls}">${r.drop.toFixed(2)}pp</td></tr>`;
+  });
+  html+=`</table></div>`;
+
+  // Confusion matrices
+  html+=`<div class="card"><div class="card-title">CONFUSION MATRICES — TRAINING (left) vs VALIDATION (right)</div>
+    <div style="font-size:.72rem;color:var(--dim);margin-bottom:12px">Green diagonal = correct predictions. Red off-diagonal = errors. A gap between training and validation is normal — it means the model has memorized some training patterns.</div>
+    <div style="display:grid;grid-template-columns:repeat(${rows.length*2},1fr);gap:10px">`;
+  rows.forEach(r=>{html+=`<canvas id="cmTr_${r.name}" width="180" height="180" style="width:100%;border-radius:6px;"></canvas>`;});
+  rows.forEach(r=>{html+=`<canvas id="cmVal_${r.name}" width="180" height="180" style="width:100%;border-radius:6px;"></canvas>`;});
+  html+=`</div></div>`;
+  res.innerHTML=html;
+  rows.forEach(r=>{drawCM(document.getElementById('cmTr_'+r.name),r.cmTr,r.name+' Train');drawCM(document.getElementById('cmVal_'+r.name),r.cmVal,r.name+' Val');});
+
+  await sleep(300);document.getElementById('trainProg').style.display='none';
+  document.getElementById('trainBtn').disabled=false;
+  document.getElementById('toStep5Btn').style.display='inline-block';
+}
+function setTrain(label,pct){document.getElementById('trainLabel').textContent=label;document.getElementById('trainBar').style.width=pct+'%';}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 5 — INFERENCE ON HW2 DATA
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('infInput').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  ST.inferenceFile=f;
+  document.getElementById('infName').textContent=f.name;
+  document.getElementById('infZone').classList.add('loaded');
+  document.getElementById('infBtn').disabled=!Object.keys(ST.models).length;
+});
+
+async function runInference(){
+  if(!ST.inferenceFile||!Object.keys(ST.models).length) return;
+  document.getElementById('infBtn').disabled=true;
+  document.getElementById('infProg').style.display='block';
+  const out=document.getElementById('infResults');out.innerHTML='';
+  setInf('Loading inference ZIP…',5);await sleep(10);
+
+  const zip=await JSZip.loadAsync(ST.inferenceFile);
+  const entries=Object.values(zip.files).filter(f=>!f.dir);
+  const infX=[],infY=[];let done=0;
+
+  for(const entry of entries){
+    const ext=entry.name.split('.').pop().toLowerCase();
+    if(!['wav','m4a','mp3','ogg'].includes(ext)) continue;
+    const fname=entry.name.split('/').pop();
+    // Match: 1a_hit1.wav or similar
+    const m=fname.toLowerCase().match(/^([1-3][a-i])_hit\d+/);
+    if(!m) continue;
+    const cell=m[1],label=ST.badCells.has(cell)?1:0;
+    try{
+      const buf=await entry.async('arraybuffer');
+      const {signal,sr}=await decodeAudio(buf);
+      const feat=Array.from(extractFeatures(signal,sr));
+      infX.push(feat);infY.push(label);
+    }catch(e){console.warn(e);}
+    done++;
+    if(done%5===0){setInf(`Extracting features: ${done}/${entries.length} files…`,5+done/entries.length*60);await sleep(0);}
+  }
+
+  if(!infX.length){out.innerHTML='<div class="explain">No matching files found. Expected names like <code>1a_hit1.wav</code></div>';document.getElementById('infBtn').disabled=false;document.getElementById('infProg').style.display='none';return;}
+
+  setInf('Classifying…',70);await sleep(10);
+  const infXS=ST.scaler.tr(infX);
+  const modelNames=Object.keys(ST.models);
+  const results={};
+  modelNames.forEach(name=>{
+    const pred=ST.models[name].predict(infXS);
+    const acc=accuracy(infY,pred);
+    results[name]={acc,cm:confMatrix(infY,pred)};
+  });
+
+  setInf('Done!',100);
+
+  // Build 3-way table if we have train/val results
+  let html=`<div class="card"><div class="card-title">HW2 TEST ACCURACY</div>
+    <div style="font-size:.72rem;color:var(--dim);margin-bottom:12px">These models were trained on HW3 data and are now tested on HW2 data — a completely different recording session. A large accuracy drop is expected and reveals how robust each model truly is.</div>
+    <table><tr><th>Model</th><th>Test Acc (HW2)</th><th>Interpretation</th></tr>`;
+  const drops=[];
+  modelNames.forEach(name=>{
+    const acc=results[name].acc;
+    const cls=acc>.75?'acc-good':acc>.6?'acc-warn':'acc-bad';
+    const note=acc>.75?'Good generalization':acc>.6?'Moderate generalization':'Poor generalization — session-specific features learned';
+    html+=`<tr><td style="font-family:var(--mono)">${name}</td><td class="${cls}">${(acc*100).toFixed(2)}%</td><td style="font-size:.72rem;color:var(--dim)">${note}</td></tr>`;
+    drops.push({name,acc});
+  });
+  const best=drops.sort((a,b)=>b.acc-a.acc)[0];
+  html+=`</table><div style="margin-top:10px;font-size:.75rem;color:var(--green)">✓ Most robust model on unseen data: <strong style="font-family:var(--mono)">${best.name}</strong> (${(best.acc*100).toFixed(2)}%)</div></div>`;
+
+  // Confusion matrices
+  html+=`<div class="card"><div class="card-title">CONFUSION MATRICES — HW2 TEST SET</div>
+    <div class="cm-grid">`;
+  modelNames.forEach(name=>{html+=`<div><div style="font-family:var(--mono);font-size:.65rem;color:var(--dim);text-align:center;margin-bottom:6px">${name}</div><canvas id="infCM_${name}" width="200" height="200" style="width:100%;border-radius:6px;"></canvas></div>`;});
+  html+=`</div></div>`;
+  out.innerHTML=html;
+  modelNames.forEach(name=>drawCM(document.getElementById('infCM_'+name),results[name].cm,`${name} (${(results[name].acc*100).toFixed(1)}%)`));
+
+  await sleep(300);document.getElementById('infProg').style.display='none';
+  document.getElementById('infBtn').disabled=false;
+}
+function setInf(label,pct){document.getElementById('infLabel').textContent=label;document.getElementById('infBar').style.width=pct+'%';}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 6 — SINGLE HIT CLASSIFY
+// ═══════════════════════════════════════════════════════════════
+let singleSignal=null,singleSR=48000;
+document.getElementById('singleInput').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  document.getElementById('singleName').textContent=f.name;
+  document.getElementById('singleZone').classList.add('loaded');
+  try{
+    const buf=await f.arrayBuffer();
+    const {signal,sr}=await decodeAudio(buf);
+    singleSignal=signal;singleSR=sr;
+    const cv=document.getElementById('singleCanvas');cv.style.display='block';
+    plotWaveforms(cv,[signal],sr,'Uploaded hit waveform');
+    document.getElementById('singleBtn').disabled=!Object.keys(ST.models).length;
+  }catch(e){alert('Could not decode audio: '+e.message);}
+});
+
+async function classifySingle(){
+  if(!singleSignal||!Object.keys(ST.models).length) return;
+  const feat=Array.from(extractFeatures(new Float32Array(singleSignal),singleSR));
+  const featS=ST.scaler.tr([feat]);
+  const out=document.getElementById('singleResults');
+  let html=`<div class="infer-cards">`;
+  Object.keys(ST.models).forEach(name=>{
+    const pred=ST.models[name].predict(featS)[0];
+    const label=pred===0?'GOOD':'BAD',cls=pred===0?'good':'bad';
+    html+=`<div class="infer-card"><div class="infer-model">${name}</div>
+      <div class="infer-result ${cls}">${label}</div>
+      <div class="infer-conf">${pred===0?'No damage detected':'Damage detected'}</div></div>`;
+  });
+  html+=`</div>`;
+  out.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function goStep(n){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('step'+n).classList.add('active');
+  document.querySelectorAll('.sn-item').forEach(item=>{
+    const s=parseInt(item.dataset.step);
+    item.classList.toggle('active',s===n);
+    item.classList.toggle('done',s<n);
+  });
+  ST.currentStep=n;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.sn-item').forEach(item=>{item.addEventListener('click',()=>goStep(parseInt(item.dataset.step)));});
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+buildCellGrid();
+buildUploadGrid();
+populateVizSelectors();
+</script>
+</body>
+</html>

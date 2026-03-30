@@ -588,17 +588,18 @@ function drawCM(canvas, cm, title='') {
     // Cell background
     ctx.fillStyle=`rgba(${col},${alpha})`;
     ctx.beginPath();ctx.roundRect(x+2,y+2,cell-4,cell-4,Math.round(6*scale));ctx.fill();
-    // Count (large)
+    // Count (large) — centered in cell
     ctx.fillStyle='#e0eeff';ctx.font=`bold ${Math.round(22*scale)}px Space Mono`;ctx.textAlign='center';
     ctx.fillText(v,x+cell/2,y+cell/2-Math.round(4*scale));
     // Percentage (smaller, below count)
     ctx.font=`${Math.round(11*scale)}px DM Sans`;ctx.fillStyle='rgba(192,213,240,.65)';
     ctx.fillText(`(${(v/total*100).toFixed(1)}%)`,x+cell/2,y+cell/2+Math.round(16*scale));
-    // Label inside cell corner (TP/TN/FP/FN)
+    // TP/TN/FP/FN label — bottom-right corner, small and out of the way
     const corner=['TN','FP','FN','TP'][r*2+c];
-    const cornerCol=r===c?'rgba(0,229,160,.5)':'rgba(255,77,109,.5)';
+    const cornerCol=r===c?'rgba(0,229,160,.6)':'rgba(255,77,109,.6)';
     ctx.font=`${Math.round(8*scale)}px Space Mono`;ctx.fillStyle=cornerCol;
-    ctx.textAlign='left';ctx.fillText(corner,x+Math.round(5*scale),y+Math.round(13*scale));
+    ctx.textAlign='right';
+    ctx.fillText(corner,x+cell-Math.round(5*scale),y+cell-Math.round(5*scale));
   }
   ctx.textAlign='left';
 }

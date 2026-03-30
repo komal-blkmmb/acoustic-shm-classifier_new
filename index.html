@@ -594,12 +594,7 @@ function drawCM(canvas, cm, title='') {
     // Percentage (smaller, below count)
     ctx.font=`${Math.round(11*scale)}px DM Sans`;ctx.fillStyle='rgba(192,213,240,.65)';
     ctx.fillText(`(${(v/total*100).toFixed(1)}%)`,x+cell/2,y+cell/2+Math.round(16*scale));
-    // TP/TN/FP/FN label — bottom-right corner, small and out of the way
-    const corner=['TN','FP','FN','TP'][r*2+c];
-    const cornerCol=r===c?'rgba(0,229,160,.6)':'rgba(255,77,109,.6)';
-    ctx.font=`${Math.round(8*scale)}px Space Mono`;ctx.fillStyle=cornerCol;
-    ctx.textAlign='right';
-    ctx.fillText(corner,x+cell-Math.round(5*scale),y+cell-Math.round(5*scale));
+
   }
   ctx.textAlign='left';
 }

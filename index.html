@@ -3,213 +3,449 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>// SHM CLASSIFIER — HW3</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>SHM Classifier — HW3</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
+/* ═══ TOKENS ═══════════════════════════════════════════════════ */
 :root {
-  --bg:#060b12;--surface:#0b1422;--surface2:#0f1c30;--border:#1a2d4a;
-  --accent:#00c8ff;--green:#00e5a0;--red:#ff4d6d;--amber:#ffb347;
-  --purple:#b47aff;--text:#c0d5f0;--dim:#4e6d96;
-  --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+  --bg:     #f3f7ff;
+  --s1:     #ffffff;
+  --s2:     #edf3ff;
+  --s3:     #dce8fa;
+  --border: #c5d4ea;
+  --glow:   #0f9f5f;
+  --accent: #0f9f5f;
+  --blue:   #1778e6;
+  --amber:  #b47200;
+  --red:    #c22748;
+  --purple: #7b55cf;
+  --text:   #1b2b44;
+  --text-strong:#0f1b30;
+  --dim:    #5b6f8b;
+  --mono:   'JetBrains Mono', monospace;
+  --sans:   'Outfit', sans-serif;
+  --r:      8px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:20px;
-  background-image:radial-gradient(ellipse at 10% 5%,rgba(0,80,180,.08) 0%,transparent 55%),
-  radial-gradient(ellipse at 90% 95%,rgba(0,200,255,.05) 0%,transparent 55%);}
-header{max-width:980px;margin:0 auto 28px;display:flex;align-items:flex-end;justify-content:space-between;
-  border-bottom:1px solid var(--border);padding-bottom:14px;}
-.logo{font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--accent);letter-spacing:1px;}
-.logo span{color:var(--dim);font-weight:400;}
-.badge{font-family:var(--mono);font-size:.58rem;padding:4px 10px;border-radius:3px;letter-spacing:1.5px;
-  background:rgba(0,200,255,.07);border:1px solid rgba(0,200,255,.2);color:var(--accent);}
-.wrap{max-width:980px;margin:0 auto;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  min-height:100vh;padding:24px 20px 60px;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 10%,rgba(15,159,95,.09) 0%,transparent 62%),
+    radial-gradient(ellipse 50% 30% at 85% 90%,rgba(23,120,230,.08) 0%,transparent 62%);
+}
+/* scanline overlay */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(23,120,230,.025) 3px,rgba(23,120,230,.025) 4px);
+}
 
-/* ── Step nav ── */
-.step-nav{display:flex;align-items:center;gap:0;margin-bottom:28px;position:relative;}
-.step-nav::before{content:'';position:absolute;top:18px;left:18px;right:18px;height:1px;background:var(--border);}
-.sn-item{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative;z-index:1;}
-.sn-dot{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);background:var(--bg);
-  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;
-  color:var(--dim);transition:all .3s;cursor:pointer;}
-.sn-item.active .sn-dot{border-color:var(--accent);color:var(--accent);background:rgba(0,200,255,.08);
-  box-shadow:0 0 12px rgba(0,200,255,.25);}
-.sn-item.done .sn-dot{border-color:var(--green);color:var(--green);background:rgba(0,229,160,.08);}
-.sn-label{font-size:.6rem;color:var(--dim);font-family:var(--mono);letter-spacing:.5px;text-align:center;line-height:1.4;white-space:nowrap;}
-.sn-item.active .sn-label{color:var(--accent);}
-.sn-item.done .sn-label{color:var(--green);}
+/* ═══ LAYOUT ════════════════════════════════════════════════════ */
+.shell{max-width:1020px;margin:0 auto;}
 
-/* ── Step panels ── */
-.step{display:none;animation:fadeIn .3s ease;}
+/* ═══ HEADER ════════════════════════════════════════════════════ */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-bottom:20px;margin-bottom:28px;
+  border-bottom:1px solid var(--border);position:relative;
+}
+.hd-left{display:flex;align-items:center;gap:20px;}
+.logo-mark{
+  width:42px;height:42px;border-radius:10px;
+  background:linear-gradient(135deg,rgba(0,232,122,.15),rgba(56,182,255,.1));
+  border:1px solid rgba(0,232,122,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:.8rem;font-weight:700;color:var(--accent);
+  box-shadow:0 0 16px rgba(0,232,122,.15);
+}
+.hd-title{font-family:var(--mono);font-weight:700;font-size:1.05rem;color:var(--text-strong);letter-spacing:.5px;}
+.hd-sub{font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:3px;letter-spacing:.5px;}
+#headerWave{height:36px;width:200px;opacity:.6;}
+.hd-badge{
+  font-family:var(--mono);font-size:.55rem;letter-spacing:2px;text-transform:uppercase;
+  padding:5px 12px;border-radius:4px;
+  background:rgba(0,232,122,.07);border:1px solid rgba(0,232,122,.2);color:var(--accent);
+}
+.hd-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.hd-course{
+  font-family:var(--mono);
+  font-size:.58rem;
+  color:var(--dim);
+  line-height:1.45;
+  text-align:right;
+}
+
+/* ═══ STEP NAV ══════════════════════════════════════════════════ */
+.step-nav{
+  display:flex;gap:0;margin-bottom:30px;
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:4px;overflow:hidden;
+}
+.sn-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:10px 6px;border-radius:9px;cursor:pointer;transition:all .25s;
+  position:relative;
+}
+.sn-item:hover{background:rgba(255,255,255,.03);}
+.sn-item.active{background:rgba(0,232,122,.08);box-shadow:inset 0 0 0 1px rgba(0,232,122,.2);}
+.sn-item.done{background:rgba(0,232,122,.04);}
+.sn-num{
+  font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:1px;
+  color:var(--dim);transition:color .25s;
+}
+.sn-item.active .sn-num{color:var(--accent);}
+.sn-item.done .sn-num{color:rgba(0,232,122,.5);}
+.sn-label{font-size:.62rem;color:var(--dim);text-align:center;line-height:1.35;white-space:nowrap;transition:color .25s;}
+.sn-item.active .sn-label{color:var(--text);}
+.sn-item.done .sn-label{color:rgba(0,232,122,.6);}
+.sn-dot{
+  width:28px;height:28px;border-radius:50%;
+  border:1.5px solid var(--border);background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;font-family:var(--mono);color:var(--dim);transition:all .25s;
+}
+.sn-item.active .sn-dot{border-color:var(--accent);color:var(--accent);box-shadow:0 0 10px rgba(0,232,122,.25);background:rgba(0,232,122,.08);}
+.sn-item.done .sn-dot{border-color:rgba(0,232,122,.4);color:var(--accent);}
+.sn-item.done .sn-dot::after{content:'✓';}
+
+/* ═══ STEPS ═════════════════════════════════════════════════════ */
+.step{display:none;animation:reveal .3s ease both;}
 .step.active{display:block;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.step-header{margin-bottom:20px;}
-.step-num{font-family:var(--mono);font-size:.62rem;color:var(--dim);letter-spacing:2px;margin-bottom:4px;}
-.step-title{font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--accent);}
+@keyframes reveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.step-hd{margin-bottom:22px;}
+.step-eyebrow{
+  font-family:var(--mono);font-size:.56rem;color:var(--dim);letter-spacing:2.5px;
+  text-transform:uppercase;margin-bottom:6px;
+}
+.step-title{
+  font-family:var(--mono);font-size:1.15rem;font-weight:700;
+  color:var(--text-strong);letter-spacing:-.5px;
+}
+.step-title em{color:var(--accent);font-style:normal;}
 
-/* ── Explain box ── */
-.explain{background:rgba(0,200,255,.04);border:1px solid rgba(0,200,255,.15);border-left:3px solid var(--accent);
-  border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px;font-size:.82rem;line-height:1.75;color:var(--text);}
-.explain strong{color:var(--accent);font-weight:600;}
-.explain code{font-family:var(--mono);font-size:.72rem;background:rgba(0,200,255,.08);padding:1px 5px;border-radius:3px;color:var(--accent);}
+/* ═══ CALLOUT / EXPLAIN ═════════════════════════════════════════ */
+.callout{
+  background:rgba(0,232,122,.04);
+  border:1px solid rgba(0,232,122,.12);
+  border-left:3px solid var(--accent);
+  border-radius:0 var(--r) var(--r) 0;
+  padding:14px 18px;margin-bottom:22px;
+  font-size:.82rem;line-height:1.8;color:var(--text);
+}
+.callout strong{color:var(--accent);font-weight:600;}
+.callout code{
+  font-family:var(--mono);font-size:.7rem;
+  background:rgba(0,232,122,.1);padding:1px 5px;border-radius:3px;color:var(--accent);
+}
 
-/* ── Cell grid ── */
-.cell-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:20px;}
-.cell-btn{padding:8px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface);
-  color:var(--dim);font-family:var(--mono);font-size:.65rem;cursor:pointer;transition:all .15s;text-align:center;}
-.cell-btn:hover{border-color:var(--text-dim);color:var(--text);}
-.cell-btn.bad{border-color:rgba(255,77,109,.5);background:rgba(255,77,109,.1);color:var(--red);}
-.cell-row-label{font-family:var(--mono);font-size:.6rem;color:var(--dim);text-align:center;padding:4px;}
-.cell-legend{display:flex;gap:20px;margin-bottom:16px;font-size:.75rem;}
-.legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle;}
+/* ═══ CARDS ══════════════════════════════════════════════════════ */
+.card{
+  background:var(--s1);border:1px solid var(--border);border-radius:var(--r);
+  padding:18px;margin-bottom:14px;
+}
+.card-title{
+  font-family:var(--mono);font-size:.68rem;color:var(--accent);letter-spacing:.5px;
+  text-transform:uppercase;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.card-title::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);}
 
-/* ── Upload zones ── */
-.upload-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
-.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:20px 10px;text-align:center;
-  cursor:pointer;transition:all .2s;background:var(--surface);position:relative;}
-.upload-zone:hover{border-color:rgba(0,200,255,.4);background:rgba(0,200,255,.03);}
-.upload-zone.loaded{cursor:default;}
-.upload-zone.loaded:hover{border-color:var(--green);background:rgba(0,229,160,.07);}
-.upload-zone.loaded{border-style:solid;border-color:var(--green);background:rgba(0,229,160,.04);}
-.upload-zone.loaded:hover{background:rgba(0,229,160,.07);}
-.uz-num{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-bottom:6px;letter-spacing:1px;}
-.uz-icon{font-size:1.4rem;display:block;margin-bottom:6px;opacity:.5;}
-.uz-hint{font-size:.65rem;color:var(--dim);line-height:1.5;}
-.uz-name{font-family:var(--mono);font-size:.6rem;color:var(--green);margin-top:6px;word-break:break-all;}
-input[type=file]{display:none;}
+/* ═══ CELL GRID ══════════════════════════════════════════════════ */
+.cell-grid-wrap{display:grid;grid-template-columns:28px repeat(9,1fr);gap:5px;margin-bottom:16px;}
+.col-headers{grid-column:2/-1;display:grid;grid-template-columns:repeat(9,1fr);gap:5px;}
+.col-hdr{font-family:var(--mono);font-size:.58rem;color:var(--dim);text-align:center;padding:3px 0;letter-spacing:1px;}
+.row-hdr{font-family:var(--mono);font-size:.58rem;color:var(--dim);display:flex;align-items:center;justify-content:center;}
+.cell-row{grid-column:2/-1;display:grid;grid-template-columns:repeat(9,1fr);gap:5px;}
+.cell-btn{
+  padding:9px 4px;border-radius:6px;border:1px solid var(--border);
+  background:var(--s2);color:var(--dim);font-family:var(--mono);font-size:.63rem;
+  cursor:pointer;transition:all .15s;text-align:center;line-height:1.2;
+}
+.cell-btn:hover{border-color:rgba(0,232,122,.3);color:var(--text);background:var(--s3);}
+.cell-btn.bad{
+  border-color:rgba(255,45,85,.45);background:rgba(255,45,85,.08);
+  color:var(--red);
+}
+.cell-btn.bad:hover{background:rgba(255,45,85,.14);}
+.cell-legend{display:flex;gap:20px;margin-bottom:14px;font-size:.73rem;color:var(--dim);}
+.ldot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
 
-/* ── Buttons ── */
-.btn{padding:11px 28px;border:none;border-radius:8px;font-family:var(--mono);font-size:.78rem;
-  font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
-.btn-primary{background:var(--accent);color:#000;}
-.btn-primary:hover{background:#33d4ff;box-shadow:0 4px 18px rgba(0,200,255,.3);}
-.btn-primary:disabled{opacity:.3;cursor:not-allowed;}
-.btn-outline{background:transparent;color:var(--accent);border:1px solid var(--accent);}
-.btn-outline:hover{background:rgba(0,200,255,.08);}
-.btn-sm{padding:7px 16px;font-size:.65rem;}
-.btn-row{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap;}
+/* ═══ DROP ZONE ══════════════════════════════════════════════════ */
+.drop-zone{
+  border:2px dashed var(--border);border-radius:12px;
+  padding:36px 24px;text-align:center;cursor:pointer;
+  transition:all .2s;background:var(--s1);
+}
+.drop-zone:hover,.drop-zone.drag-over{
+  border-color:rgba(0,232,122,.4);background:rgba(0,232,122,.03);
+}
+.dz-icon{font-size:2rem;margin-bottom:10px;display:block;}
+.dz-label{font-family:var(--mono);font-size:.82rem;color:var(--accent);margin-bottom:4px;}
+.dz-hint{font-size:.7rem;color:var(--dim);}
 
-/* ── Progress ── */
-.prog-wrap{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:18px;}
-.prog-label{font-family:var(--mono);font-size:.68rem;color:var(--dim);margin-bottom:8px;}
-.prog-bg{background:var(--surface2);border-radius:3px;height:4px;overflow:hidden;}
-.prog-bar{height:100%;background:linear-gradient(90deg,#0066cc,var(--accent));border-radius:3px;
-  transition:width .3s ease;box-shadow:0 0 6px var(--accent);}
+/* ═══ TABS ═══════════════════════════════════════════════════════ */
+.tab-bar{display:flex;gap:4px;margin-bottom:20px;background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:4px;}
+.tab-btn{
+  flex:1;padding:9px;border:none;border-radius:7px;cursor:pointer;
+  font-family:var(--mono);font-size:.7rem;font-weight:700;letter-spacing:.5px;
+  background:transparent;color:var(--dim);transition:all .2s;
+}
+.tab-btn.active{background:rgba(0,232,122,.1);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(0,232,122,.2);}
+.tab-btn:hover:not(.active){background:rgba(255,255,255,.03);color:var(--text);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:reveal .2s ease both;}
 
-/* ── Panels / cards ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px;}
-.card-title{font-family:var(--mono);font-size:.72rem;color:var(--accent);margin-bottom:12px;letter-spacing:.5px;}
-.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.canvas-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px;overflow:hidden;}
-canvas{display:block;width:100%;height:auto;}
+/* ═══ PROGRESS ═══════════════════════════════════════════════════ */
+.prog-wrap{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:16px;}
+.prog-label{font-family:var(--mono);font-size:.66rem;color:var(--dim);margin-bottom:8px;}
+.prog-bg{background:var(--s2);border-radius:3px;height:3px;overflow:hidden;}
+.prog-bar{
+  height:100%;border-radius:3px;transition:width .35s ease;
+  background:linear-gradient(90deg,rgba(0,232,122,.5),var(--accent));
+  box-shadow:0 0 8px rgba(0,232,122,.4);
+}
 
-/* ── Table ── */
+/* ═══ BUTTONS ════════════════════════════════════════════════════ */
+.btn{
+  padding:11px 26px;border:none;border-radius:8px;cursor:pointer;
+  font-family:var(--mono);font-size:.75rem;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;transition:all .2s;display:inline-flex;align-items:center;gap:8px;
+}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{filter:brightness(1.1);box-shadow:0 4px 20px rgba(0,232,122,.3);}
+.btn-primary:disabled{opacity:.25;cursor:not-allowed;filter:none;box-shadow:none;}
+.btn-outline{background:transparent;color:var(--accent);border:1px solid rgba(0,232,122,.4);}
+.btn-outline:hover{background:rgba(0,232,122,.07);}
+.btn-danger{background:rgba(255,45,85,.12);color:var(--red);border:1px solid rgba(255,45,85,.3);}
+.btn-danger:hover{background:rgba(255,45,85,.2);}
+.btn-sm{padding:7px 14px;font-size:.65rem;}
+.btn-row{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap;}
+
+/* ═══ RECORDING UI ═══════════════════════════════════════════════ */
+.rec-scope{
+  background:var(--s2);border:1px solid rgba(15,159,95,.2);border-radius:10px;
+  overflow:hidden;position:relative;margin-bottom:14px;
+}
+.rec-scope-overlay{
+  position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(15,159,95,.04) 0,transparent 1px 80px);
+}
+#liveCanvas,#sessionCanvas{display:block;width:100%;height:auto;}
+.rec-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+.rec-status{
+  font-family:var(--mono);font-size:.7rem;color:var(--dim);
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.rec-status.live{color:var(--red);animation:blink 1s step-end infinite;}
+.rec-status.ok{color:var(--accent);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.rec-pill{
+  font-family:var(--mono);font-size:.58rem;letter-spacing:1px;
+  padding:4px 10px;border-radius:20px;background:rgba(255,45,85,.15);
+  color:var(--red);border:1px solid rgba(255,45,85,.3);
+  animation:blink 1.2s ease infinite;
+}
+.sample-rate-chip{
+  font-family:var(--mono);font-size:.58rem;padding:3px 8px;border-radius:20px;
+  background:rgba(56,182,255,.1);border:1px solid rgba(56,182,255,.2);color:var(--blue);
+}
+
+/* ═══ MODEL SELECTION ════════════════════════════════════════════ */
+.model-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.model-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px;cursor:pointer;transition:all .2s;
+}
+.model-card.selected{border-color:rgba(0,232,122,.35);background:rgba(0,232,122,.05);}
+.model-card input{display:none;}
+.mc-icon{font-size:1.4rem;margin-bottom:8px;}
+.mc-name{font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--text);margin-bottom:3px;}
+.mc-desc{font-size:.62rem;color:var(--dim);line-height:1.5;}
+.mc-check{
+  width:16px;height:16px;border:2px solid var(--dim);border-radius:3px;
+  float:right;margin-top:-28px;transition:all .2s;display:flex;align-items:center;justify-content:center;
+}
+.model-card.selected .mc-check{border-color:var(--accent);background:var(--accent);}
+.mc-check::after{content:'✓';font-size:.55rem;color:#fff;display:none;}
+.model-card.selected .mc-check::after{display:block;}
+
+/* ═══ TABLE ══════════════════════════════════════════════════════ */
 table{width:100%;border-collapse:collapse;font-size:.78rem;}
-th{font-family:var(--mono);font-size:.62rem;color:var(--dim);padding:8px 12px;text-align:left;
-  border-bottom:1px solid var(--border);letter-spacing:.5px;}
-td{padding:9px 12px;border-bottom:1px solid rgba(26,45,74,.5);}
+th{font-family:var(--mono);font-size:.6rem;color:var(--dim);padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:.5px;text-transform:uppercase;}
+td{padding:10px 12px;border-bottom:1px solid rgba(22,32,51,.7);}
 tr:last-child td{border-bottom:none;}
-.acc-good{color:var(--green);font-family:var(--mono);}
+.acc-good{color:var(--accent);font-family:var(--mono);}
 .acc-warn{color:var(--amber);font-family:var(--mono);}
 .acc-bad{color:var(--red);font-family:var(--mono);}
 
-/* ── Checkboxes (model selection) ── */
-.model-checks{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
-.model-check{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);
-  border-radius:8px;padding:14px;cursor:pointer;transition:all .2s;}
-.model-check input{display:none;}
-.model-check.selected{border-color:rgba(0,200,255,.4);background:rgba(0,200,255,.05);}
-.model-icon{font-size:1.3rem;}
-.model-name{font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--text);}
-.model-desc{font-size:.65rem;color:var(--dim);margin-top:2px;line-height:1.4;}
-.check-box{width:16px;height:16px;border:2px solid var(--dim);border-radius:3px;flex-shrink:0;margin-left:auto;
-  display:flex;align-items:center;justify-content:center;transition:all .2s;}
-.model-check.selected .check-box{border-color:var(--accent);background:var(--accent);}
-.check-box::after{content:'✓';font-size:.6rem;color:#000;display:none;}
-.model-check.selected .check-box::after{display:block;}
+/* ═══ SELECTS ════════════════════════════════════════════════════ */
+select{
+  background:var(--s2);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:8px 14px;font-family:var(--mono);font-size:.7rem;cursor:pointer;
+}
+select:focus{outline:none;border-color:rgba(0,232,122,.4);}
+.selector-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
 
-/* ── Viz selectors ── */
-.selector-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
-select{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;
-  padding:8px 12px;font-family:var(--mono);font-size:.72rem;cursor:pointer;}
-select:focus{outline:none;border-color:var(--accent);}
+/* ═══ STATUS CHIPS ═══════════════════════════════════════════════ */
+.chip{font-family:var(--mono);font-size:.62rem;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;}
+.chip-ok{background:rgba(0,232,122,.1);color:var(--accent);border:1px solid rgba(0,232,122,.25);}
+.chip-warn{background:rgba(255,170,0,.1);color:var(--amber);border:1px solid rgba(255,170,0,.25);}
+.chip-err{background:rgba(255,45,85,.1);color:var(--red);border:1px solid rgba(255,45,85,.25);}
+.chip-info{background:rgba(56,182,255,.1);color:var(--blue);border:1px solid rgba(56,182,255,.25);}
 
-/* ── Inference result cards ── */
-.infer-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px;}
-.infer-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
-.infer-model{font-family:var(--mono);font-size:.65rem;color:var(--dim);margin-bottom:8px;}
-.infer-result{font-family:var(--mono);font-size:1.1rem;font-weight:700;margin-bottom:4px;}
-.infer-result.good{color:var(--green);}
+/* ═══ CANVAS / VIZ ═══════════════════════════════════════════════ */
+.canvas-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:4px;overflow:hidden;}
+canvas{display:block;width:100%;height:auto;}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+
+/* ═══ INFER CARDS ════════════════════════════════════════════════ */
+.infer-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
+.infer-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  padding:16px;text-align:center;
+}
+.infer-model{font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-bottom:8px;letter-spacing:.5px;}
+.infer-result{font-family:var(--mono);font-size:1.1rem;font-weight:700;margin-bottom:5px;}
+.infer-result.good{color:var(--accent);}
 .infer-result.bad{color:var(--red);}
-.infer-conf{font-size:.68rem;color:var(--dim);}
-.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.infer-conf{font-size:.65rem;color:var(--dim);}
 
-/* ── Status chip ── */
-.status-chip{font-family:var(--mono);font-size:.65rem;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;}
-.chip-ok{background:rgba(0,229,160,.1);color:var(--green);border:1px solid rgba(0,229,160,.3);}
-.chip-warn{background:rgba(255,179,71,.1);color:var(--amber);border:1px solid rgba(255,179,71,.3);}
-.chip-err{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.3);}
-.chip-info{background:rgba(0,200,255,.1);color:var(--accent);border:1px solid rgba(0,200,255,.3);}
+/* ═══ SESSION CELL GRID ══════════════════════════════════════════ */
+.live-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;margin-bottom:12px;}
+.lc-btn{
+  padding:8px 4px;border-radius:5px;border:1px solid var(--border);
+  background:var(--s2);color:var(--dim);font-family:var(--mono);font-size:.62rem;
+  text-align:center;transition:all .15s;
+}
+.lc-btn.lc-done{border-color:rgba(0,232,122,.4);background:rgba(0,232,122,.06);color:var(--accent);}
+.lc-btn.lc-active{border-color:var(--accent);background:rgba(0,232,122,.12);color:#fff;box-shadow:0 0 10px rgba(0,232,122,.2);animation:pulse-cell .8s ease infinite alternate;}
+.lc-btn.lc-bad{border-color:rgba(255,45,85,.3);background:rgba(255,45,85,.04);color:rgba(255,45,85,.6);}
+@keyframes pulse-cell{from{box-shadow:0 0 8px rgba(0,232,122,.2)}to{box-shadow:0 0 18px rgba(0,232,122,.45)}}
 
-/* ── Scrollbar ── */
+/* ═══ SCROLLBAR ══════════════════════════════════════════════════ */
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 </style>
 </head>
 <body>
+<div class="shell">
+
+<!-- ─── HEADER ────────────────────────────────────────────────── -->
 <header>
-  <div>
-    <div class="logo">// SHM CLASSIFIER <span>— HW3</span></div>
-    <div style="font-size:.65rem;color:var(--dim);margin-top:4px;font-family:var(--mono)">Structural Health Monitoring · KNN · DT · LR · SVM</div>
+  <div class="hd-left">
+    <div class="logo-mark">SHM</div>
+    <div>
+      <div class="hd-title">Structural Health Monitor</div>
+    </div>
   </div>
-  <div class="badge">ML SPRING 2026</div>
+  <canvas id="headerWave" width="200" height="36"></canvas>
+  <div class="hd-right">
+    <div class="hd-badge">SPRING 2026</div>
+    <div class="hd-course">
+      <div>2026SP MECE5366 25231 MAIN - Machine Learning in Mechanical</div>
+      <div>Instructor: Dr. Gangbing Song</div>
+    </div>
+  </div>
 </header>
 
-<div class="wrap">
-  <!-- Step nav -->
-  <div class="step-nav" id="stepNav">
-    <div class="sn-item active" data-step="1"><div class="sn-dot">01</div><div class="sn-label">Configure<br>Plate</div></div>
-    <div class="sn-item" data-step="2"><div class="sn-dot">02</div><div class="sn-label">Upload<br>Data</div></div>
-    <div class="sn-item" data-step="3"><div class="sn-dot">03</div><div class="sn-label">Inspect<br>Hits</div></div>
-    <div class="sn-item" data-step="4"><div class="sn-dot">04</div><div class="sn-label">Train<br>Models</div></div>
-    <div class="sn-item" data-step="5"><div class="sn-dot">05</div><div class="sn-label">Robustness<br>Test</div></div>
-    <div class="sn-item" data-step="6"><div class="sn-dot">06</div><div class="sn-label">Single Hit<br>Classify</div></div>
+<!-- ─── STEP NAV ───────────────────────────────────────────────── -->
+<div class="step-nav" id="stepNav">
+  <div class="sn-item active" data-step="1">
+    <div class="sn-dot">01</div>
+    <div class="sn-label">Configure<br>Plate</div>
+  </div>
+  <div class="sn-item" data-step="2">
+    <div class="sn-dot">02</div>
+    <div class="sn-label">Upload/<br>Record</div>
+  </div>
+  <div class="sn-item" data-step="3">
+    <div class="sn-dot">03</div>
+    <div class="sn-label">Inspect<br>Hits</div>
+  </div>
+  <div class="sn-item" data-step="4">
+    <div class="sn-dot">04</div>
+    <div class="sn-label">Train<br>Models</div>
+  </div>
+  <div class="sn-item" data-step="5">
+    <div class="sn-dot">05</div>
+    <div class="sn-label">Robustness<br>Test</div>
+  </div>
+  <div class="sn-item" data-step="6">
+    <div class="sn-dot">06</div>
+    <div class="sn-label">Live<br>Classify</div>
+  </div>
+</div>
+
+<!-- ─── STEP 1: Configure plate ───────────────────────────────── -->
+<div class="step active" id="step1">
+  <div class="step-hd">
+    <div class="step-eyebrow">Step 01 / 06</div>
+    <div class="step-title">Configure <em>Plate Layout</em></div>
+  </div>
+  <div class="callout">
+    The plate has <strong>27 cells</strong> in a 3×9 grid (rows 1–3, columns a–i).
+    <strong>Click cells</strong> to toggle between healthy and damaged (debonded).
+    Damaged cells sound different when tapped — the internal layer has separated.
+    Default layout matches the physically inspected cells from lab.
+  </div>
+  <div class="cell-legend">
+    <span><span class="ldot" style="background:rgba(0,232,122,.35);border:1px solid rgba(0,232,122,.5)"></span>Healthy</span>
+    <span><span class="ldot" style="background:rgba(255,45,85,.3);border:1px solid rgba(255,45,85,.5)"></span>Damaged / debonded</span>
   </div>
 
-  <!-- STEP 1: Configure plate -->
-  <div class="step active" id="step1">
-    <div class="step-header"><div class="step-num">STEP 01 / 06</div><div class="step-title">// CONFIGURE PLATE LAYOUT</div></div>
-    <div class="explain">
-      The plate has <strong>27 cells</strong> arranged in a 3×9 grid (rows 1-3, columns a-i).
-      <strong>Click cells to toggle</strong> them between healthy (blue) and damaged (red).
-      Damaged cells have a <strong>debonding defect</strong> — they sound different when tapped because the internal layer has separated.
-      The default selection matches the physically inspected cells from your lab.
-    </div>
-    <div class="cell-legend">
-      <span><span class="legend-dot" style="background:rgba(0,200,255,.3);border:1px solid var(--accent)"></span>Healthy (good)</span>
-      <span><span class="legend-dot" style="background:rgba(255,77,109,.3);border:1px solid var(--red)"></span>Damaged (bad)</span>
-    </div>
-    <div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:4px;text-align:center;">
-      <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span><span>i</span>
-    </div>
-    <div class="cell-grid" id="cellGrid"></div>
-    <div style="font-size:.78rem;color:var(--dim);margin-bottom:16px;">Selected damaged cells: <span id="badCount" style="color:var(--red);font-family:var(--mono)">8</span> / 27</div>
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="goStep(2)">Confirm Layout → Next</button>
-      <button class="btn btn-outline btn-sm" onclick="resetCells()">Reset Defaults</button>
-    </div>
+  <div class="cell-grid-wrap">
+    <div></div><!-- corner spacer -->
+    <div class="col-headers" id="colHeaders"></div>
+    <!-- rows injected by JS -->
+    <div id="cellGrid" style="display:contents"></div>
   </div>
 
-  <!-- STEP 2: Upload data -->
-  <div class="step" id="step2">
-    <div class="step-header"><div class="step-num">STEP 02 / 06</div><div class="step-title">// UPLOAD ITERATION DATA</div></div>
-    <div class="explain">
-      Upload the <strong>ZIP file(s)</strong> from each recording iteration. Each ZIP contains 27 audio files (one per cell), named like <code>1a.m4a</code>, <code>2g.m4a</code>, etc.
-      You don't need all 5 — even 1 iteration will work. Once uploaded, the app automatically <strong>detects each hit</strong> using energy thresholding and <strong>extracts 154 audio features</strong> (128 PSD bins + 26 MFCC values) from every hit.
-      This is the raw material your classifiers will learn from.
+  <div style="font-size:.75rem;color:var(--dim);margin-bottom:18px;">
+    Damaged cells selected: <span id="badCount" style="color:var(--red);font-family:var(--mono);font-weight:700;">8</span> / 27
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="goStep(2)">Confirm Layout →</button>
+    <button class="btn btn-outline btn-sm" onclick="resetCells()">Reset Defaults</button>
+  </div>
+</div>
+
+<!-- ─── STEP 2: Upload / Record ───────────────────────────────── -->
+<div class="step" id="step2">
+  <div class="step-hd">
+    <div class="step-eyebrow">Step 02 / 06</div>
+    <div class="step-title">Upload ZIPs <em>or Live-Record</em> a Session</div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab2('zip')">📂 Upload ZIP Files</button>
+    <button class="tab-btn" onclick="switchTab2('live')">🎤 Live Recording Session</button>
+  </div>
+
+  <!-- ZIP upload tab -->
+  <div class="tab-panel active" id="tab2-zip">
+    <div class="callout">
+      Upload <strong>one ZIP per recording iteration</strong>. Each ZIP should contain files named like
+      <code>1a.m4a</code>, <code>2g.m4a</code>. The app detects hits via energy thresholding and extracts
+      <strong>154 features</strong> (128 PSD bins + 26 MFCC values) per hit.
     </div>
-    <div class="upload-grid" id="uploadGrid"></div>
+    <div class="drop-zone" id="dropZone"
+         onclick="document.getElementById('multiZipInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+      <span class="dz-icon">📦</span>
+      <div class="dz-label">Drop ZIP files here or click to browse</div>
+      <div class="dz-hint">Any number of iterations · .zip files only</div>
+      <input type="file" id="multiZipInput" accept=".zip" multiple style="display:none">
+    </div>
+    <div id="zipList" style="margin-bottom:16px;display:none">
+      <div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase">Queued iterations</div>
+      <div id="zipListItems" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
     <div id="procProg" style="display:none">
       <div class="prog-wrap"><div class="prog-label" id="procLabel">Processing…</div><div class="prog-bg"><div class="prog-bar" id="procBar" style="width:0%"></div></div></div>
     </div>
@@ -217,108 +453,273 @@ select:focus{outline:none;border-color:var(--accent);}
     <div class="btn-row">
       <button class="btn btn-primary" id="processBtn" onclick="processAllZips()" disabled>⚙ Extract Features</button>
       <button class="btn btn-outline btn-sm" onclick="goStep(1)">← Back</button>
-      <span id="dataReadyMsg" style="font-family:var(--mono);font-size:.65rem;color:var(--green);display:none">✓ Dataset ready</span>
+      <span id="dataReadyMsg" style="font-family:var(--mono);font-size:.62rem;color:var(--accent);display:none">✓ Dataset ready</span>
       <button class="btn btn-primary" id="toStep3Btn" style="display:none" onclick="goStep(3)">Inspect Hits →</button>
     </div>
   </div>
 
-  <!-- STEP 3: Inspect hits -->
-  <div class="step" id="step3">
-    <div class="step-header"><div class="step-num">STEP 03 / 06</div><div class="step-title">// INSPECT EXTRACTED HITS</div></div>
-    <div class="explain">
-      Before training, verify that the hit extraction worked correctly. Select a cell and iteration to see <strong>all hits overlaid</strong> on the same time axis.
-      Good extraction = all hits look similar (same shape, same duration). Red-bordered hits differ significantly from the average — they may be echo artefacts or noise triggers.
-      The <strong>mean ± 1 std</strong> band shows how consistent the hits are.
+  <!-- Live session tab -->
+  <div class="tab-panel" id="tab2-live">
+    <div class="callout">
+      Record <strong>each of the 27 cells</strong> directly from your device's microphone.
+      The app requests <strong>48 000 Hz</strong> sample rate (matches your iPhone recordings).
+      For each cell: tap the plate → app auto-detects the hit → confirm and move on.
+      After each full pass, you can record another iteration or finalize dataset build.
     </div>
-    <div class="selector-row">
-      <select id="vizIter"><option value="">-- Iteration --</option></select>
-      <select id="vizCell"><option value="">-- Cell --</option></select>
-      <button class="btn btn-primary btn-sm" onclick="showHits()">Show Hits</button>
+
+    <div id="lsSetupPanel">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+        <div class="sample-rate-chip" id="lsSRChip">SR: —</div>
+        <div id="lsPermStatus" style="font-family:var(--mono);font-size:.65rem;color:var(--dim);">Microphone not yet requested</div>
+      </div>
+      <button class="btn btn-primary" onclick="initLiveSession()">🎤 Start Live Session</button>
     </div>
-    <div id="vizOutput"></div>
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="goStep(4)">Looks Good → Train Models</button>
-      <button class="btn btn-outline btn-sm" onclick="goStep(2)">← Back</button>
+
+    <div id="lsRecordPanel" style="display:none">
+      <!-- mini cell grid showing progress -->
+      <div style="font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-bottom:8px;letter-spacing:.5px;">CELL PROGRESS</div>
+      <div style="font-family:var(--mono);font-size:.66rem;color:var(--dim);margin-bottom:8px;">
+        Iteration: <span id="lsIterNum" style="color:var(--accent);font-weight:700;">1</span>
+        &nbsp;|&nbsp; Completed iterations: <span id="lsIterDone" style="color:var(--accent);font-weight:700;">0</span>
+      </div>
+      <div class="live-grid" id="lsGrid"></div>
+      <div style="font-family:var(--mono);font-size:.78rem;color:var(--text);margin-bottom:12px;">
+        Recording cell: <strong id="lsCellName" style="color:var(--accent);">—</strong>
+        &nbsp;<span id="lsCellBadge"></span>
+        &nbsp;<span style="color:var(--dim);">(<span id="lsCellIdx">0</span>/27)</span>
+      </div>
+
+      <div class="rec-scope">
+        <div class="rec-scope-overlay"></div>
+        <canvas id="sessionCanvas" width="900" height="120"></canvas>
+      </div>
+
+      <div class="rec-controls">
+        <button class="btn btn-danger btn-sm" id="lsRecBtn" onclick="lsStartRec()">● Record</button>
+        <button class="btn btn-outline btn-sm" id="lsStopBtn" onclick="lsStopRec()" style="display:none">⏹ Stop</button>
+        <div class="rec-status" id="lsStatus">Ready — press Record then tap the plate</div>
+        <div class="sample-rate-chip" id="lsSRDisplay" style="display:none"></div>
+      </div>
+
+      <div id="lsHitPreview" style="display:none;margin-bottom:14px;">
+        <div style="font-family:var(--mono);font-size:.65rem;color:var(--dim);margin-bottom:6px;">DETECTED HITS</div>
+        <div id="lsHitCount" style="font-family:var(--mono);font-size:.85rem;color:var(--accent);margin-bottom:10px;"></div>
+      </div>
+
+      <div class="btn-row" id="lsActionRow">
+        <button class="btn btn-primary btn-sm" id="lsConfirmBtn" onclick="lsConfirm()" disabled>✓ Confirm & Next Cell</button>
+        <button class="btn btn-outline btn-sm" id="lsRetryBtn" onclick="lsRetry()" disabled>↺ Retry Cell</button>
+        <button class="btn btn-outline btn-sm" onclick="lsSkip()">Skip →</button>
+      </div>
+
+      <div id="lsProgress" style="margin-top:16px;display:none">
+        <div class="prog-wrap">
+          <div class="prog-label" id="lsProgLabel">Building dataset…</div>
+          <div class="prog-bg"><div class="prog-bar" id="lsProgBar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div id="lsCompleteMsg" style="display:none">
+        <div class="callout" style="color:var(--accent)">
+          <strong>✓ Iteration complete.</strong> <span id="lsIterSummary">1 iteration recorded.</span>
+          Record another full iteration, or finalize and build the dataset.
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" id="lsAnotherBtn" onclick="lsStartAnotherIteration()">+ Record Another Iteration</button>
+          <button class="btn btn-primary" id="lsFinalizeBtn" onclick="lsFinalizeLiveDataset()">Finalize Dataset</button>
+          <button class="btn btn-primary" id="lsInspectBtn" style="display:none" onclick="goStep(3)">Inspect Hits →</button>
+        </div>
+      </div>
     </div>
   </div>
+</div>
 
-  <!-- STEP 4: Train models -->
-  <div class="step" id="step4">
-    <div class="step-header"><div class="step-num">STEP 04 / 06</div><div class="step-title">// TRAIN CLASSIFIERS</div></div>
-    <div class="explain">
-      Select which models to train. The dataset is <strong>shuffled and split 70/30</strong> — 70% for training, 30% for validation.
-      Because both sets come from the same recording sessions, validation accuracy will be <em>high but optimistic</em> (the true unseen test happens in Step 5).
-      <br><br>
-      <strong>KNN</strong> finds the 5 most similar training hits and votes. <strong>Decision Tree</strong> learns if-then rules on features. <strong>Logistic Regression</strong> fits a linear probability boundary. <strong>SVM</strong> finds the widest possible margin between classes.
-    </div>
-    <div class="model-checks">
-      <label class="model-check selected" id="chk-KNN"><input type="checkbox" checked><span class="model-icon">📍</span><div><div class="model-name">KNN</div><div class="model-desc">k=5, Euclidean<br>distance voting</div></div><div class="check-box"></div></label>
-      <label class="model-check selected" id="chk-DT"><input type="checkbox" checked><span class="model-icon">🌿</span><div><div class="model-name">Decision Tree</div><div class="model-desc">CART, max<br>depth=6, Gini</div></div><div class="check-box"></div></label>
-      <label class="model-check selected" id="chk-LR"><input type="checkbox" checked><span class="model-icon">📈</span><div><div class="model-name">Logistic Reg.</div><div class="model-desc">Gradient descent<br>sigmoid boundary</div></div><div class="check-box"></div></label>
-      <label class="model-check selected" id="chk-SVM"><input type="checkbox" checked><span class="model-icon">⚡</span><div><div class="model-name">SVM</div><div class="model-desc">Linear, Pegasos<br>SGD optimizer</div></div><div class="check-box"></div></label>
-    </div>
-    <div style="font-size:.75rem;color:var(--dim);margin-bottom:16px;">Split: <span style="color:var(--accent);font-family:var(--mono)" id="splitInfo">—</span></div>
-    <div id="trainProg" style="display:none">
-      <div class="prog-wrap"><div class="prog-label" id="trainLabel">Training…</div><div class="prog-bg"><div class="prog-bar" id="trainBar" style="width:0%"></div></div></div>
-    </div>
-    <div id="trainResults"></div>
-    <div class="btn-row">
-      <button class="btn btn-primary" id="trainBtn" onclick="trainModels()">▶ Train Selected Models</button>
-      <button class="btn btn-outline btn-sm" onclick="goStep(3)">← Back</button>
-      <button class="btn btn-primary" id="toStep5Btn" style="display:none" onclick="goStep(5)">Test Robustness →</button>
-    </div>
+<!-- ─── STEP 3: Inspect hits ──────────────────────────────────── -->
+<div class="step" id="step3">
+  <div class="step-hd">
+    <div class="step-eyebrow">Step 03 / 06</div>
+    <div class="step-title">Inspect <em>Extracted Hits</em></div>
   </div>
-
-  <!-- STEP 5: Robustness test -->
-  <div class="step" id="step5">
-    <div class="step-header"><div class="step-num">STEP 05 / 06</div><div class="step-title">// ROBUSTNESS TEST — HW2 DATA</div></div>
-    <div class="explain">
-      Now we test whether models <strong>generalize to new data</strong> collected in a different session (your HW2 dataset). Upload the HW2 ZIP — files should be named like <code>1a_hit1.wav</code>, <code>2g_hit3.wav</code>.
-      The models are used <strong>exactly as trained</strong> — no retraining. A big accuracy drop from Step 4 means the model learned <em>session-specific patterns</em> rather than true structural damage signatures.
-      The model with the <strong>smallest drop</strong> is the most robust.
-    </div>
-    <div style="margin-bottom:18px;">
-      <label class="upload-zone" style="max-width:320px;display:block;" id="infZone" onclick="if(!this.classList.contains('loaded'))document.getElementById('infInput').click()">
-        <span class="uz-icon">📦</span>
-        <div class="uz-num">HW2 INFERENCE DATA</div>
-        <div class="uz-hint">Click to upload the HW2 ZIP file<br>(individual hit .wav files inside)</div>
-        <div class="uz-name" id="infName"></div>
-        <input type="file" id="infInput" accept=".zip">
-      </label>
-    </div>
-    <div id="infProg" style="display:none">
-      <div class="prog-wrap"><div class="prog-label" id="infLabel">Processing…</div><div class="prog-bg"><div class="prog-bar" id="infBar" style="width:0%"></div></div></div>
-    </div>
-    <div id="infResults"></div>
-    <div class="btn-row">
-      <button class="btn btn-primary" id="infBtn" onclick="runInference()" disabled>▶ Process &amp; Classify All</button>
-      <button class="btn btn-outline btn-sm" onclick="goStep(4)">← Back</button>
-    </div>
+  <div class="callout">
+    Select an iteration and cell to see all hits overlaid on the same axis.
+    <strong>Good extraction</strong> = consistent shapes. The <strong>mean ± std band</strong> shows consistency.
+    Red-outlined hits differ significantly — possible echo artefacts or noise triggers.
+    You can also inspect <strong>PSD and MFCC</strong> for any selected hit.
   </div>
+  <div class="selector-row">
+    <select id="vizIter"><option value="">-- Iteration --</option></select>
+    <select id="vizCell"><option value="">-- Cell --</option></select>
+    <button class="btn btn-primary btn-sm" onclick="showHits()">Show Hits</button>
+  </div>
+  <div id="vizOutput"></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="goStep(4)">Looks Good → Train</button>
+    <button class="btn btn-outline btn-sm" onclick="goStep(2)">← Back</button>
+  </div>
+</div>
 
-  <!-- STEP 6: Single hit classify -->
-  <div class="step" id="step6">
-    <div class="step-header"><div class="step-num">STEP 06 / 06</div><div class="step-title">// CLASSIFY A SINGLE HIT</div></div>
-    <div class="explain">
-      Upload <strong>any single percussion hit</strong> (.wav or .m4a) and all trained models will classify it instantly.
-      The same feature extraction pipeline runs: RMS normalize → extract 128 PSD bins + 26 MFCC values → StandardScaler normalize → classify.
-      This is what deployment would look like — tap a cell, record it, get a health verdict in seconds.
-    </div>
-    <label class="upload-zone" style="max-width:400px;display:block;margin-bottom:18px;" id="singleZone" onclick="if(!this.classList.contains('loaded'))document.getElementById('singleInput').click()">
-      <span class="uz-icon">🎵</span>
-      <div class="uz-num">SINGLE HIT AUDIO</div>
-      <div class="uz-hint">Click or drag to upload a .wav or .m4a recording<br>of a single percussion hit</div>
-      <div class="uz-name" id="singleName"></div>
-      <input type="file" id="singleInput" accept=".wav,.m4a,.mp3,.ogg,.flac">
+<!-- ─── STEP 4: Train models ──────────────────────────────────── -->
+<div class="step" id="step4">
+  <div class="step-hd">
+    <div class="step-eyebrow">Step 04 / 06</div>
+    <div class="step-title">Train <em>Classifiers</em></div>
+  </div>
+  <div class="callout">
+    Dataset is <strong>shuffled and split 70/30</strong>. Both sets come from the same recording sessions, so
+    validation accuracy is <em>optimistic</em> — the real unseen test happens in Step 5.
+    <br><br>
+    <strong>KNN</strong> votes by 5 nearest neighbors. <strong>Decision Tree</strong> learns if-then rules.
+    <strong>Logistic Regression</strong> fits a linear boundary. <strong>SVM</strong> maximises margin.
+  </div>
+  <div class="model-grid">
+    <label class="model-card selected" id="chk-KNN">
+      <input type="checkbox" checked>
+      <div class="mc-icon">📍</div>
+      <div class="mc-check"></div>
+      <div class="mc-name">KNN</div>
+      <div class="mc-desc">k=5, Euclidean distance voting</div>
     </label>
-    <canvas id="singleCanvas" width="900" height="140" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:100%;margin-bottom:18px;"></canvas>
+    <label class="model-card selected" id="chk-DT">
+      <input type="checkbox" checked>
+      <div class="mc-icon">🌿</div>
+      <div class="mc-check"></div>
+      <div class="mc-name">Decision Tree</div>
+      <div class="mc-desc">CART, max depth=6, Gini impurity</div>
+    </label>
+    <label class="model-card selected" id="chk-LR">
+      <input type="checkbox" checked>
+      <div class="mc-icon">📈</div>
+      <div class="mc-check"></div>
+      <div class="mc-name">Logistic Reg.</div>
+      <div class="mc-desc">Gradient descent sigmoid boundary</div>
+    </label>
+    <label class="model-card selected" id="chk-SVM">
+      <input type="checkbox" checked>
+      <div class="mc-icon">⚡</div>
+      <div class="mc-check"></div>
+      <div class="mc-name">SVM</div>
+      <div class="mc-desc">Linear averaged Pegasos + class weights</div>
+    </label>
+  </div>
+  <div style="font-size:.75rem;color:var(--dim);margin-bottom:14px;">Split: <span style="color:var(--accent);font-family:var(--mono)" id="splitInfo">—</span></div>
+  <div id="trainProg" style="display:none">
+    <div class="prog-wrap"><div class="prog-label" id="trainLabel">Training…</div><div class="prog-bg"><div class="prog-bar" id="trainBar" style="width:0%"></div></div></div>
+  </div>
+  <div id="trainResults"></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="trainBtn" onclick="trainModels()">▶ Train Selected Models</button>
+    <button class="btn btn-outline btn-sm" onclick="goStep(3)">← Back</button>
+    <button class="btn btn-primary" id="toStep5Btn" style="display:none" onclick="goStep(5)">Test Robustness →</button>
+  </div>
+</div>
+
+<!-- ─── STEP 5: Robustness test ───────────────────────────────── -->
+<div class="step" id="step5">
+  <div class="step-hd">
+    <div class="step-eyebrow">Step 05 / 06</div>
+    <div class="step-title">Robustness <em>Test — HW2 Data</em></div>
+  </div>
+  <div class="callout">
+    Test whether models <strong>generalise to a new session</strong>. Upload ZIPs with
+    pre-extracted hit files (<code>1a_hit1.wav</code>) or raw recordings (<code>1a.m4a</code>).
+    A big accuracy drop from Step 4 means session-specific patterns were learned.
+    The model with the <strong>smallest drop</strong> is most robust.
+  </div>
+  <div class="drop-zone" id="infDropZone"
+       onclick="document.getElementById('infMultiInput').click()"
+       ondragover="event.preventDefault();this.classList.add('drag-over')"
+       ondragleave="this.classList.remove('drag-over')"
+       ondrop="handleInfDrop(event)">
+    <span class="dz-icon">📦</span>
+    <div class="dz-label">Drop inference ZIP(s) or click to browse</div>
+    <div class="dz-hint">Pre-extracted hits or raw recordings</div>
+    <input type="file" id="infMultiInput" accept=".zip" multiple style="display:none">
+  </div>
+  <div id="infZipList" style="margin-bottom:14px;display:none">
+    <div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);margin-bottom:6px;letter-spacing:.05em;text-transform:uppercase">Queued inference files</div>
+    <div id="infZipItems" style="display:flex;flex-direction:column;gap:5px;"></div>
+  </div>
+  <div id="infProg" style="display:none">
+    <div class="prog-wrap"><div class="prog-label" id="infLabel">Processing…</div><div class="prog-bg"><div class="prog-bar" id="infBar" style="width:0%"></div></div></div>
+  </div>
+  <div id="infResults"></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="infBtn" onclick="runInference()" disabled>▶ Process &amp; Classify All</button>
+    <button class="btn btn-outline btn-sm" onclick="goStep(4)">← Back</button>
+  </div>
+</div>
+
+<!-- ─── STEP 6: Live Classify ─────────────────────────────────── -->
+<div class="step" id="step6">
+  <div class="step-hd">
+    <div class="step-eyebrow">Step 06 / 06</div>
+    <div class="step-title">Classify <em>a Single Hit</em></div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab6('upload')">📁 Upload File</button>
+    <button class="tab-btn" onclick="switchTab6('record')">🎤 Live Record</button>
+  </div>
+
+  <!-- Upload tab -->
+  <div class="tab-panel active" id="tab6-upload">
+    <div class="callout">
+      Upload any single percussion hit (.wav or .m4a). All trained models classify it instantly
+      using the same pipeline: RMS normalize → PSD + MFCC → StandardScaler → classify.
+    </div>
+    <div class="drop-zone" style="max-width:420px;padding:28px 20px;" id="singleZone"
+         onclick="document.getElementById('singleInput').click()">
+      <span class="dz-icon">🎵</span>
+      <div class="dz-label">Single hit audio file</div>
+      <div class="dz-hint">.wav · .m4a · .mp3 · .ogg · .flac</div>
+      <div id="singleName" style="font-family:var(--mono);font-size:.62rem;color:var(--accent);margin-top:8px;"></div>
+      <input type="file" id="singleInput" accept=".wav,.m4a,.mp3,.ogg,.flac" style="display:none">
+    </div>
+    <canvas id="singleCanvas" width="900" height="120" style="display:none;margin:14px 0;border-radius:8px;border:1px solid var(--border);background:var(--s2);width:100%;"></canvas>
     <div id="singleResults"></div>
     <div class="btn-row">
-      <button class="btn btn-primary" id="singleBtn" onclick="classifySingle()" disabled>▶ Classify This Hit</button>
+      <button class="btn btn-primary" id="singleBtn" onclick="classifySingle()" disabled>▶ Classify</button>
       <button class="btn btn-outline btn-sm" onclick="goStep(5)">← Back</button>
     </div>
   </div>
-</div><!-- .wrap -->
+
+  <!-- Live record tab -->
+  <div class="tab-panel" id="tab6-record">
+    <div class="callout">
+      Tap the plate once and classify instantly. The app records from your microphone,
+      detects the percussive hit onset automatically, extracts features, and runs all trained models.
+      Sample rate is requested at <strong>48 000 Hz</strong> to match training data.
+      You can also <strong>download the captured hit as WAV</strong> directly.
+    </div>
+
+    <div id="lrSetupMsg" style="margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="initLiveRecord()">🎤 Enable Microphone</button>
+      <div id="lrPermStatus" style="font-family:var(--mono);font-size:.65rem;color:var(--dim);">Microphone access not yet requested</div>
+    </div>
+
+    <div id="lrMainPanel" style="display:none">
+      <div class="rec-scope" style="height:140px;">
+        <div class="rec-scope-overlay"></div>
+        <canvas id="liveCanvas" width="900" height="130"></canvas>
+      </div>
+
+      <div class="rec-controls" style="margin-top:10px;">
+        <button class="btn btn-danger" id="lrRecBtn" onclick="lrStartRec()">● RECORD</button>
+        <button class="btn btn-outline" id="lrStopBtn" onclick="lrStopRec()" style="display:none">⏹ STOP</button>
+        <div class="rec-status" id="lrStatus">Press RECORD then tap the plate once</div>
+        <div class="sample-rate-chip" id="lrSRChip"></div>
+      </div>
+
+      <div id="lrResults"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="lrClassifyBtn" onclick="classifyLiveHit()" disabled>▶ Classify Hit</button>
+        <button class="btn btn-outline btn-sm" id="lrDownloadBtn" onclick="downloadLiveHit()" disabled>⬇ Download Hit (.wav)</button>
+        <button class="btn btn-outline btn-sm" id="lrClearBtn" onclick="lrClear()" style="display:none">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .shell -->
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -329,16 +730,59 @@ const ST = {
   allCells: ['1a','1b','1c','1d','1e','1f','1g','1h','1i',
              '2a','2b','2c','2d','2e','2f','2g','2h','2i',
              '3a','3b','3c','3d','3e','3f','3g','3h','3i'],
-  zips: Array(5).fill(null),      // {zip, name}
-  iterData: Array(5).fill(null),  // {hits:{cell:Float32Array[]}, feats:{cell:number[][]}, labels:{cell:0|1}}
-  dataset: null,                  // {X,y,nTrain,nVal}
-  nSamples: 14400,                // fixed signal length (0.3s @ 48kHz)
+  zips: [],
+  iterData: [],
+  dataset: null,
+  nSamples: 14400,
   targetSR: 48000,
   scaler: null,
   models: {},
   currentStep: 1,
   audioCtx: null,
+  inferenceZips: [],
 };
+
+// ─── TAB SWITCHING ──────────────────────────────────────────────
+function switchTab2(which){
+  ['zip','live'].forEach(t=>{
+    document.getElementById('tab2-'+t).classList.toggle('active',t===which);
+    document.querySelectorAll('#step2 .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(which==='zip'?0:1)));
+  });
+}
+function switchTab6(which){
+  ['upload','record'].forEach(t=>{
+    document.getElementById('tab6-'+t).classList.toggle('active',t===which);
+    document.querySelectorAll('#step6 .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(which==='upload'?0:1)));
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HEADER OSCILLOSCOPE ANIMATION
+// ═══════════════════════════════════════════════════════════════
+(function headerWave(){
+  const cv=document.getElementById('headerWave');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='rgba(0,232,122,0.7)';
+    ctx.lineWidth=1.5;
+    ctx.shadowColor='rgba(0,232,122,0.4)';
+    ctx.shadowBlur=6;
+    ctx.beginPath();
+    for(let x=0;x<W;x++){
+      const phase=x/W*Math.PI*4+t;
+      const y=H/2+Math.sin(phase)*H*.25+Math.sin(phase*2.3+t*.7)*H*.1;
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur=0;
+    t+=0.04;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
 
 // ═══════════════════════════════════════════════════════════════
 // FFT (Cooley-Tukey radix-2)
@@ -365,25 +809,44 @@ function fixLength(sig, n) {
   if(sig.length>n) return sig.slice(0,n);
   const out=new Float32Array(n); out.set(sig); return out;
 }
-
 function welchPSD(sig, nFFT=1024, hop=512, nBins=128) {
   const nSeg=Math.max(1,Math.floor((sig.length-nFFT)/hop)+1);
   const psd=new Float64Array(nFFT/2+1);
   for(let s=0;s<nSeg;s++){const m=magSpec(sig.subarray(s*hop,s*hop+nFFT),nFFT);for(let i=0;i<m.length;i++)psd[i]+=m[i]*m[i];}
   const out=new Float32Array(nBins);
-  let psdSum=0; for(const v of psd) psdSum+=v;
-  for(let i=0;i<nBins;i++){out[i]=Math.log1p(psd[i]/nSeg);} // log compress
-  // normalize to sum=1 for cross-session invariance
+  for(let i=0;i<nBins;i++){out[i]=Math.log1p(psd[i]/nSeg);}
   let s=0; for(const v of out) s+=v;
   if(s>1e-8) for(let i=0;i<nBins;i++) out[i]/=s;
   return out;
 }
-
-// Mel filterbank (built once, cached)
+function welchPSDPhysical(sig,sr,nFFT=1024,hop=512){
+  const x=sig.length<nFFT?fixLength(sig,nFFT):sig;
+  const nSeg=Math.max(1,Math.floor((x.length-nFFT)/hop)+1);
+  const win=new Float32Array(nFFT);
+  let winPow=0;
+  for(let i=0;i<nFFT;i++){const w=0.54-0.46*Math.cos(2*Math.PI*i/(nFFT-1));win[i]=w;winPow+=w*w;}
+  const scale=1/(Math.max(1,nSeg)*Math.max(1e-12,sr*winPow));
+  const pxx=new Float64Array(nFFT/2+1);
+  const re=new Float64Array(nFFT),im=new Float64Array(nFFT);
+  for(let s=0;s<nSeg;s++){
+    re.fill(0);im.fill(0);
+    const off=s*hop;
+    for(let i=0;i<nFFT;i++) re[i]=(x[off+i]||0)*win[i];
+    _fft(re,im);
+    for(let k=0;k<=nFFT/2;k++){
+      let p=(re[k]*re[k]+im[k]*im[k])*scale;
+      if(k>0&&k<nFFT/2)p*=2;
+      pxx[k]+=p;
+    }
+  }
+  const freqHz=new Float32Array(nFFT/2+1);
+  for(let k=0;k<=nFFT/2;k++) freqHz[k]=k*sr/nFFT;
+  return {freqHz,psd:Array.from(pxx)};
+}
 let _melFB=null, _melFFT=0, _melSR=0;
 function getMelFB(nMFCC,nFFT,sr) {
   if(_melFB&&_melFFT===nFFT&&_melSR===sr) return _melFB;
-  const nFilters=nMFCC+14; // use more filters than MFCCs
+  const nFilters=nMFCC+14;
   const hz2m=f=>2595*Math.log10(1+f/700), m2hz=m=>700*(10**(m/2595)-1);
   const mMin=hz2m(0),mMax=hz2m(sr/2);
   const bins=Array.from({length:nFilters+2},(_,i)=>{const m=mMin+i*(mMax-mMin)/(nFilters+1);return Math.round(m2hz(m)*(nFFT/2+1)/(sr/2));});
@@ -391,13 +854,11 @@ function getMelFB(nMFCC,nFFT,sr) {
   _melFB=Array.from({length:nFilters},(_,m)=>{const f=new Float32Array(nb);for(let k=bins[m];k<bins[m+1]&&k<nb;k++)f[k]=(k-bins[m])/(bins[m+1]-bins[m]||1);for(let k=bins[m+1];k<=bins[m+2]&&k<nb;k++)f[k]=(bins[m+2]-k)/(bins[m+2]-bins[m+1]||1);return f;});
   _melFFT=nFFT; _melSR=sr; return _melFB;
 }
-
 function dct2(x,nC) {
   const N=x.length,out=new Float32Array(nC);
   for(let k=0;k<nC;k++){let s=0;for(let n=0;n<N;n++)s+=x[n]*Math.cos(Math.PI/N*k*(n+.5));out[k]=s;}
   return out;
 }
-
 function computeMFCC(sig,sr,nMFCC=13,nFFT=1024,hop=256) {
   const fb=getMelFB(nMFCC,nFFT,sr);
   const frames=[]; for(let i=0;i+nFFT<=sig.length;i+=hop) frames.push(magSpec(sig.subarray(i,i+nFFT),nFFT));
@@ -407,7 +868,20 @@ function computeMFCC(sig,sr,nMFCC=13,nFFT=1024,hop=256) {
   for(let c=0;c<nMFCC;c++){let s=0,s2=0;for(const f of mfccs){s+=f[c];s2+=f[c]*f[c];}mean[c]=s/mfccs.length;std[c]=Math.sqrt(Math.max(0,s2/mfccs.length-mean[c]*mean[c]));}
   return {mean,std};
 }
-
+function computeMFCCMap(sig,sr,nMFCC=13,nFFT=1024,hop=256){
+  const fb=getMelFB(nMFCC,nFFT,sr);
+  const frames=[]; for(let i=0;i+nFFT<=sig.length;i+=hop) frames.push(magSpec(sig.subarray(i,i+nFFT),nFFT));
+  if(!frames.length) return {matrix:Array.from({length:nMFCC},()=>new Float32Array(0)),nFrames:0,nMFCC};
+  const mfccFrames=frames.map(m=>{
+    const mel=fb.map(f=>{let s=0;for(let i=0;i<f.length;i++)s+=m[i]*f[i];return Math.log(Math.max(s,1e-10));});
+    return dct2(mel,nMFCC);
+  });
+  const matrix=Array.from({length:nMFCC},()=>new Float32Array(mfccFrames.length));
+  for(let t=0;t<mfccFrames.length;t++){
+    for(let c=0;c<nMFCC;c++) matrix[c][t]=mfccFrames[t][c];
+  }
+  return {matrix,nFrames:mfccFrames.length,nMFCC};
+}
 function detectOnsets(sig,sr,mult=2.0,minGap=0.3,fLen=2048,hop=512) {
   const nF=Math.floor((sig.length-fLen)/hop)+1;
   const rms=new Float32Array(nF);
@@ -418,7 +892,6 @@ function detectOnsets(sig,sr,mult=2.0,minGap=0.3,fLen=2048,hop=512) {
   for(let i=1;i<nF;i++) if(loud[i-1]===0&&loud[i]===1){const s=i*hop;if(!out.length||s-out[out.length-1]>=minS)out.push(s);}
   return out;
 }
-
 function trimTail(hit,sr,thr=0.05) {
   const fLen=512,hop=128,nF=Math.floor((hit.length-fLen)/hop)+1;
   if(nF<=0) return hit;
@@ -429,18 +902,31 @@ function trimTail(hit,sr,thr=0.05) {
   const end=Math.min(hit.length,Math.max(Math.round(.05*sr),last*hop+Math.round(.03*sr)));
   return hit.slice(0,end);
 }
-
+function hitQuality(hit, refPeak, minRelPeak=0.20, minCrest=3.0, maxAttackRatio=0.40) {
+  if(!hit.length) return {keep:false,reason:'empty'};
+  let peak=0, sumSq=0, peakIdx=0;
+  for(let i=0;i<hit.length;i++){const a=Math.abs(hit[i]);sumSq+=hit[i]*hit[i];if(a>peak){peak=a;peakIdx=i;}}
+  const rms=Math.sqrt(sumSq/hit.length);
+  const crest=rms>1e-9?peak/rms:0;
+  const attackRatio=peakIdx/hit.length;
+  const relPeak=refPeak>1e-9?peak/refPeak:0;
+  if(relPeak<minRelPeak) return {keep:false,reason:`too quiet (peak=${(relPeak*100).toFixed(0)}% of max)`,scores:{relPeak,crest,attackRatio}};
+  if(crest<minCrest) return {keep:false,reason:`no sharp transient (crest=${crest.toFixed(1)})`,scores:{relPeak,crest,attackRatio}};
+  if(attackRatio>maxAttackRatio) return {keep:false,reason:`late peak (${(attackRatio*100).toFixed(0)}%)`,scores:{relPeak,crest,attackRatio}};
+  return {keep:true,reason:'ok',scores:{relPeak,crest,attackRatio}};
+}
 function extractFeatures(sig,sr) {
   let rms=0; for(const v of sig) rms+=v*v; rms=Math.sqrt(rms/sig.length);
   const norm=rms>1e-8?sig.map(v=>v/rms):sig;
-  // DC removal
   let mean=0; for(const v of norm) mean+=v; mean/=norm.length;
   const dc=norm.map(v=>v-mean);
   const fixed=fixLength(dc,ST.nSamples);
   const psd=welchPSD(fixed,1024,512,128);
   const {mean:mfccM,std:mfccS}=computeMFCC(fixed,sr,13,1024,256);
   const feat=new Float32Array(154);
-  feat.set(psd,0); feat.set(mfccM,128); feat.set(mfccS,141);
+  const psdTotal=psd.reduce((s,v)=>s+v,0);
+  for(let i=0;i<128;i++) feat[i]=psdTotal>1e-12?psd[i]/psdTotal:0;
+  feat.set(mfccM,128); feat.set(mfccS,141);
   return feat;
 }
 
@@ -460,8 +946,44 @@ async function decodeAudio(buf) {
   else{mono=new Float32Array(len);for(let c=0;c<decoded.numberOfChannels;c++){const ch=decoded.getChannelData(c);for(let i=0;i<len;i++)mono[i]+=ch[i];}for(let i=0;i<len;i++)mono[i]/=decoded.numberOfChannels;}
   return {signal:mono,sr:decoded.sampleRate};
 }
-
-// Parse cell name like "1a", "1A", "A1", "1 h" → "1a" or null
+function encodeWavMono(signal,sr){
+  const numSamples=signal.length;
+  const bytesPerSample=2;
+  const blockAlign=bytesPerSample;
+  const byteRate=sr*blockAlign;
+  const dataSize=numSamples*bytesPerSample;
+  const buf=new ArrayBuffer(44+dataSize);
+  const view=new DataView(buf);
+  let off=0;
+  const writeStr=s=>{for(let i=0;i<s.length;i++)view.setUint8(off++,s.charCodeAt(i));};
+  writeStr('RIFF');view.setUint32(off,36+dataSize,true);off+=4;
+  writeStr('WAVE');
+  writeStr('fmt ');view.setUint32(off,16,true);off+=4;
+  view.setUint16(off,1,true);off+=2; // PCM
+  view.setUint16(off,1,true);off+=2; // mono
+  view.setUint32(off,sr,true);off+=4;
+  view.setUint32(off,byteRate,true);off+=4;
+  view.setUint16(off,blockAlign,true);off+=2;
+  view.setUint16(off,16,true);off+=2;
+  writeStr('data');view.setUint32(off,dataSize,true);off+=4;
+  for(let i=0;i<numSamples;i++){
+    const s=Math.max(-1,Math.min(1,signal[i]));
+    view.setInt16(off,s<0?s*0x8000:s*0x7fff,true);
+    off+=2;
+  }
+  return new Blob([buf],{type:'audio/wav'});
+}
+function downloadWav(signal,sr,filename){
+  const blob=encodeWavMono(signal,sr);
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+}
 function parseCellName(stem) {
   const c=stem.toLowerCase().replace(/[\s_\-]/g,'');
   let m=c.match(/^(\d+)([a-z])$/); if(m)return m[1]+m[2];
@@ -474,16 +996,14 @@ function parseCellName(stem) {
 // ═══════════════════════════════════════════════════════════════
 class StandardScaler {
   fit(X){const n=X.length,d=X[0].length;this.u=new Float32Array(d);this.s=new Float32Array(d);for(let j=0;j<d;j++){let a=0,b=0;for(let i=0;i<n;i++){a+=X[i][j];b+=X[i][j]*X[i][j];}this.u[j]=a/n;this.s[j]=Math.sqrt(Math.max(1e-10,b/n-(a/n)**2));}return this;}
-  tr(X){return X.map(r=>Array.from(r,( v,j)=>(v-this.u[j])/this.s[j]));}
+  tr(X){return X.map(r=>Array.from(r,(v,j)=>(v-this.u[j])/this.s[j]));}
   fitTr(X){this.fit(X);return this.tr(X);}
 }
-
 class KNN {
   constructor(k=5){this.k=k;}
   fit(X,y){this.X=X;this.y=y;return this;}
   predict(X){const n=this.X.length;return X.map(x=>{const d=new Float32Array(n);for(let i=0;i<n;i++){let s=0;for(let j=0;j<x.length;j++){const diff=x[j]-this.X[i][j];s+=diff*diff;}d[i]=s;}const idx=Array.from({length:n},(_,i)=>i).sort((a,b)=>d[a]-d[b]);let v0=0,v1=0;for(let i=0;i<this.k;i++){this.y[idx[i]]===0?v0++:v1++;}return v1>=v0?1:0;});}
 }
-
 class DT {
   constructor(maxD=6){this.maxD=maxD;}
   _gini(y){const n=y.length;if(!n)return 0;let c0=0;for(const v of y)if(v===0)c0++;const p=c0/n;return 1-p*p-(1-p)*(1-p);}
@@ -492,26 +1012,54 @@ class DT {
   fit(X,y){this.tree=this._build(X,y,0);return this;}
   predict(X){return X.map(x=>this._pred(x,this.tree));}
 }
-
 class LR {
   constructor(it=400,lr=0.05,C=1){this.it=it;this.lr=lr;this.C=C;}
   fit(X,y){const n=X.length,d=X[0].length;this.w=new Float32Array(d);this.b=0;
     for(let t=0;t<this.it;t++){const dw=new Float32Array(d);let db=0;for(let i=0;i<n;i++){const z=X[i].reduce((s,v,j)=>s+v*this.w[j],this.b),p=1/(1+Math.exp(-z)),e=p-y[i];for(let j=0;j<d;j++)dw[j]+=e*X[i][j];db+=e;}for(let j=0;j<d;j++)this.w[j]-=this.lr*(dw[j]/n+this.w[j]/this.C);this.b-=this.lr*db/n;}return this;}
   predict(X){return X.map(x=>{const z=x.reduce((s,v,j)=>s+v*this.w[j],this.b);return 1/(1+Math.exp(-z))>=.5?1:0;});}
 }
-
 class SVM {
-  constructor(C=1,it=2000){this.C=C;this.it=it;}
-  fit(X,y){const n=X.length,d=X[0].length;this.w=new Float32Array(d);this.b=0;const ym=y.map(v=>v===1?1:-1);
-    for(let t=1;t<=this.it;t++){const lr=1/(0.01*t),i=Math.floor(Math.random()*n);const z=ym[i]*(X[i].reduce((s,v,j)=>s+v*this.w[j],this.b));if(z<1){for(let j=0;j<d;j++)this.w[j]=(1-lr*0.01)*this.w[j]+lr*this.C*ym[i]*X[i][j];this.b+=lr*this.C*ym[i];}else{for(let j=0;j<d;j++)this.w[j]*=(1-lr*0.01);}}return this;}
-  predict(X){return X.map(x=>x.reduce((s,v,j)=>s+v*this.w[j],this.b)>=0?1:0);}
+  constructor(C=1,it=4000,posW=1,negW=1){this.C=C;this.it=it;this.posW=posW;this.negW=negW;}
+  fit(X,y){
+    const n=X.length,d=X[0].length,lambda=1/this.C;
+    this.w=new Float32Array(d);this.b=0;
+    const wSum=new Float64Array(d);let bSum=0,cnt=0;
+    const ym=y.map(v=>v===1?1:-1);
+    for(let t=1;t<=this.it;t++){
+      const lr=1/(lambda*t),i=Math.floor(Math.random()*n);
+      const yi=ym[i],clsW=yi===1?this.posW:this.negW;
+      const z=yi*(X[i].reduce((s,v,j)=>s+v*this.w[j],this.b));
+      if(z<1){for(let j=0;j<d;j++)this.w[j]=(1-lr*lambda)*this.w[j]+lr*clsW*yi*X[i][j];this.b+=lr*clsW*yi;}
+      else{for(let j=0;j<d;j++)this.w[j]*=(1-lr*lambda);}
+      if(t>Math.max(50,Math.floor(this.it*0.1))){for(let j=0;j<d;j++)wSum[j]+=this.w[j];bSum+=this.b;cnt++;}
+    }
+    if(cnt>0){for(let j=0;j<d;j++)this.w[j]=wSum[j]/cnt;this.b=bSum/cnt;}
+    return this;
+  }
+  decisionScore(X){return X.map(x=>x.reduce((s,v,j)=>s+v*this.w[j],this.b));}
+  predict(X){return this.decisionScore(X).map(s=>s>=0?1:0);}
+}
+class RBFSVM {
+  constructor(C=1,gamma=0.01,D=256,it=3000){this.C=C;this.gamma=gamma;this.D=D;this.it=it;}
+  _buildRFF(d){const sqrtG=Math.sqrt(this.gamma);this.W=[];this.b_rff=[];for(let i=0;i<this.D;i++){const row=new Float32Array(d);for(let j=0;j<d;j++){const u1=Math.random()+1e-12,u2=Math.random();row[j]=Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2)*sqrtG;}this.W.push(row);this.b_rff.push(Math.random()*2*Math.PI);}}
+  _tr(X){const sc=Math.sqrt(2/this.D);return X.map(x=>{const z=new Float32Array(this.D);for(let i=0;i<this.D;i++){let dot=this.b_rff[i];for(let j=0;j<x.length;j++)dot+=this.W[i][j]*x[j];z[i]=sc*Math.cos(dot);}return z;});}
+  fit(X,y){
+    this._buildRFF(X[0].length);
+    const Xr=this._tr(X),n=Xr.length,D=this.D,lambda=1/this.C;
+    this.w=new Float32Array(D);this.b=0;
+    const ym=y.map(v=>v===1?1:-1);
+    for(let t=1;t<=this.it;t++){const lr=1/(lambda*t),i=Math.floor(Math.random()*n);const z=ym[i]*(Xr[i].reduce((s,v,j)=>s+v*this.w[j],this.b));if(z<1){for(let j=0;j<D;j++)this.w[j]=(1-lr*lambda)*this.w[j]+lr*ym[i]*Xr[i][j];this.b+=lr*ym[i];}else{for(let j=0;j<D;j++)this.w[j]*=(1-lr*lambda);}}
+    return this;
+  }
+  decisionScoreRaw(X){const Xr=this._tr(X);return Xr.map(x=>x.reduce((s,v,j)=>s+v*this.w[j],this.b));}
+  predictRaw(X){return this.decisionScoreRaw(X).map(v=>v>=0?1:0);}
 }
 
 function confMatrix(yTrue,yPred){const cm=[[0,0],[0,0]];for(let i=0;i<yTrue.length;i++)cm[yTrue[i]][yPred[i]]++;return cm;}
 function accuracy(yTrue,yPred){let c=0;for(let i=0;i<yTrue.length;i++)if(yTrue[i]===yPred[i])c++;return c/yTrue.length;}
-
+function prepX(X,scaler,fit=false){return fit?scaler.fitTr(X):scaler.tr(X);}
 function stratifiedSplit(X,y,testFrac=.3,seed=42){
-  let s=seed; const rng=()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};
+  let s=seed;const rng=()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};
   const idx0=[],idx1=[];y.forEach((v,i)=>v===0?idx0.push(i):idx1.push(i));
   [idx0,idx1].forEach(arr=>{for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}});
   const n0v=Math.round(idx0.length*testFrac),n1v=Math.round(idx1.length*testFrac);
@@ -525,193 +1073,438 @@ function stratifiedSplit(X,y,testFrac=.3,seed=42){
 // ═══════════════════════════════════════════════════════════════
 function plotWaveforms(canvas, signals, sr, title='') {
   const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
-  ctx.fillStyle='#0b1422'; ctx.fillRect(0,0,W,H);
-  if(!signals.length) return;
-  const maxLen=Math.max(...signals.map(s=>s.length));
-  const PAD={l:6,r:6,t:20,b:6};
-  const PW=W-PAD.l-PAD.r,PH=H-PAD.t-PAD.b;
-  // title
-  if(title){ctx.fillStyle='#4e6d96';ctx.font='11px Space Mono';ctx.fillText(title,PAD.l,14);}
-  // axes
-  ctx.strokeStyle='#1a2d4a';ctx.lineWidth=.5;
+  ctx.fillStyle='#f7faff';ctx.fillRect(0,0,W,H);
+  if(!signals.length)return;
+  let maxAbs=0;
+  signals.forEach(sig=>{for(let i=0;i<sig.length;i++){const a=Math.abs(sig[i]);if(a>maxAbs)maxAbs=a;}});
+  if(maxAbs<1e-9)maxAbs=1;
+  const PAD={l:6,r:6,t:20,b:6},PW=W-PAD.l-PAD.r,PH=H-PAD.t-PAD.b;
+  if(title){ctx.fillStyle='#5b6f8b';ctx.font='11px JetBrains Mono';ctx.fillText(title,PAD.l,14);}
+  ctx.strokeStyle='#c5d4ea';ctx.lineWidth=.5;
   ctx.beginPath();ctx.moveTo(PAD.l,H/2);ctx.lineTo(W-PAD.r,H/2);ctx.stroke();
-  // waveforms
-  const colors=['#00c8ff','#00e5a0','#ffb347','#ff4d6d','#b47aff','#33d4ff','#4dffb4'];
+  const colors=['#00e87a','#38b6ff','#ffaa00','#ff2d55','#b67aff','#4dffb4','#ffda6a'];
   signals.forEach((sig,si)=>{
-    ctx.beginPath();ctx.strokeStyle=colors[si%colors.length];ctx.globalAlpha=.45;ctx.lineWidth=.8;
-    for(let i=0;i<PW;i++){const x=Math.floor(i/PW*sig.length),v=sig[x];const px=PAD.l+i,py=PAD.t+PH*.5-v*PH*.45;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+    ctx.beginPath();ctx.strokeStyle=colors[si%colors.length];ctx.globalAlpha=.4;ctx.lineWidth=.8;
+    for(let i=0;i<PW;i++){const x=Math.floor(i/PW*sig.length),v=sig[x]/maxAbs;const px=PAD.l+i,py=PAD.t+PH*.5-v*PH*.45;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
     ctx.stroke();
   });
   ctx.globalAlpha=1;
-  // mean±std overlay
   const maxL=Math.max(...signals.map(s=>s.length));
   const mean=new Float32Array(PW),std=new Float32Array(PW);
-  for(let i=0;i<PW;i++){const xi=Math.floor(i/PW*maxL);let s=0,s2=0,c=0;signals.forEach(sig=>{if(xi<sig.length){s+=sig[xi];s2+=sig[xi]*sig[xi];c++;}});if(c){mean[i]=s/c;std[i]=Math.sqrt(Math.max(0,s2/c-(s/c)**2));}}
-  // std band
-  ctx.beginPath();for(let i=0;i<PW;i++){const py=PAD.t+PH*.5-(mean[i]+std[i])*PH*.45;i===0?ctx.moveTo(PAD.l+i,py):ctx.lineTo(PAD.l+i,py);}
+  for(let i=0;i<PW;i++){const xi=Math.floor(i/PW*maxL);let s=0,s2=0,c=0;signals.forEach(sig=>{if(xi<sig.length){const v=sig[xi]/maxAbs;s+=v;s2+=v*v;c++;}});if(c){mean[i]=s/c;std[i]=Math.sqrt(Math.max(0,s2/c-(s/c)**2));}}
+  ctx.beginPath();
+  for(let i=0;i<PW;i++){const py=PAD.t+PH*.5-(mean[i]+std[i])*PH*.45;i===0?ctx.moveTo(PAD.l+i,py):ctx.lineTo(PAD.l+i,py);}
   for(let i=PW-1;i>=0;i--){const py=PAD.t+PH*.5-(mean[i]-std[i])*PH*.45;ctx.lineTo(PAD.l+i,py);}
-  ctx.closePath();ctx.fillStyle='rgba(0,200,255,.1)';ctx.fill();
-  // mean line
-  ctx.beginPath();ctx.strokeStyle='#00c8ff';ctx.lineWidth=1.5;ctx.globalAlpha=.85;
+  ctx.closePath();ctx.fillStyle='rgba(15,159,95,.10)';ctx.fill();
+  ctx.beginPath();ctx.strokeStyle='#0f9f5f';ctx.lineWidth=1.5;ctx.globalAlpha=.85;
   for(let i=0;i<PW;i++){const py=PAD.t+PH*.5-mean[i]*PH*.45;i===0?ctx.moveTo(PAD.l+i,py):ctx.lineTo(PAD.l+i,py);}
   ctx.stroke();ctx.globalAlpha=1;
 }
-
 function drawCM(canvas, cm, title='') {
   const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
-  // Scale font sizes relative to canvas size (base=180, scale up proportionally)
-  const scale=W/180;
-  ctx.fillStyle='#0b1422';ctx.fillRect(0,0,W,H);
-  const labels=['Good','Bad'],PAD=Math.round(48*scale),cell=(Math.min(W,H)-PAD*2)/2;
+  ctx.fillStyle='#f7faff';ctx.fillRect(0,0,W,H);
+  const labels=['Good','Bad'],PAD=36,cell=(Math.min(W,H)-PAD*2)/2;
   const max=Math.max(cm[0][0],cm[0][1],cm[1][0],cm[1][1])||1;
-  const total=cm[0][0]+cm[0][1]+cm[1][0]+cm[1][1]||1;
-  if(title){
-    ctx.fillStyle='#7a9dc0';ctx.font=`${Math.round(11*scale)}px Space Mono`;
-    ctx.textAlign='center';ctx.fillText(title,W/2,Math.round(14*scale));
-  }
-  // Predicted label (top)
-  ctx.fillStyle='#4e6d96';ctx.font=`${Math.round(9*scale)}px Space Mono`;ctx.textAlign='center';
-  ctx.fillText('Predicted',W/2,PAD-Math.round(18*scale));
-  labels.forEach((l,i)=>{ctx.fillText(l,PAD+i*cell+cell/2,PAD-Math.round(5*scale));});
-  // Actual label (left, rotated)
-  ctx.save();ctx.translate(Math.round(10*scale),H/2);ctx.rotate(-Math.PI/2);
-  ctx.fillStyle='#4e6d96';ctx.font=`${Math.round(9*scale)}px Space Mono`;ctx.textAlign='center';
-  ctx.fillText('Actual',0,0);ctx.restore();
-  labels.forEach((l,i)=>{
-    ctx.save();ctx.translate(PAD-Math.round(6*scale),PAD+i*cell+cell/2);ctx.rotate(-Math.PI/2);
-    ctx.fillStyle='#4e6d96';ctx.font=`${Math.round(9*scale)}px Space Mono`;ctx.textAlign='center';
-    ctx.fillText(l,0,0);ctx.restore();
-  });
+  if(title){ctx.fillStyle='#5b6f8b';ctx.font='10px JetBrains Mono';ctx.textAlign='center';ctx.fillText(title,W/2,13);}
   for(let r=0;r<2;r++) for(let c=0;c<2;c++){
-    const v=cm[r][c],x=PAD+c*cell,y=PAD+r*cell,alpha=.08+.65*(v/max);
-    const col=r===c?'0,229,160':'255,77,109';
-    // Cell background
-    ctx.fillStyle=`rgba(${col},${alpha})`;
-    ctx.beginPath();ctx.roundRect(x+2,y+2,cell-4,cell-4,Math.round(6*scale));ctx.fill();
-    // Count (large) — centered in cell
-    ctx.fillStyle='#e0eeff';ctx.font=`bold ${Math.round(22*scale)}px Space Mono`;ctx.textAlign='center';
-    ctx.fillText(v,x+cell/2,y+cell/2-Math.round(4*scale));
-    // Percentage (smaller, below count)
-    ctx.font=`${Math.round(11*scale)}px DM Sans`;ctx.fillStyle='rgba(192,213,240,.65)';
-    ctx.fillText(`(${(v/total*100).toFixed(1)}%)`,x+cell/2,y+cell/2+Math.round(16*scale));
-
+    const v=cm[r][c],x=PAD+c*cell,y=PAD+r*cell,alpha=.1+.6*(v/max);
+    const col=r===c?'0,232,122':'255,45,85';
+    ctx.fillStyle=`rgba(${col},${alpha})`;ctx.fillRect(x,y,cell-2,cell-2);
+    ctx.fillStyle='#1b2b44';ctx.font='bold 14px JetBrains Mono';ctx.textAlign='center';
+    ctx.fillText(v,x+cell/2,y+cell/2-4);
+    ctx.font='10px Outfit';ctx.fillStyle='#5b6f8b';
+    ctx.fillText(`${(v/(cm[0][0]+cm[0][1]+cm[1][0]+cm[1][1])*100).toFixed(0)}%`,x+cell/2,y+cell/2+12);
   }
-  ctx.textAlign='left';
+  ctx.fillStyle='#5b6f8b';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  labels.forEach((l,i)=>{ctx.fillText(l,PAD+i*cell+cell/2,PAD-4);});
+  ctx.save();ctx.translate(PAD-8,PAD);
+  labels.forEach((l,i)=>{ctx.save();ctx.translate(0,i*cell+cell/2);ctx.rotate(-Math.PI/2);ctx.fillText(l,0,0);ctx.restore();});
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE OSCILLOSCOPE (shared draw fn for both recording contexts)
+// ═══════════════════════════════════════════════════════════════
+function drawScope(canvas, analyser, idle=false) {
+  const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  ctx.fillStyle='#edf3ff';ctx.fillRect(0,0,W,H);
+  // grid
+  ctx.strokeStyle='rgba(15,159,95,0.12)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=W/8){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=H/4){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  if(idle){
+    ctx.fillStyle='rgba(15,159,95,0.75)';ctx.font='13px JetBrains Mono';ctx.textAlign='center';
+    ctx.fillText('READY — tap the plate after pressing RECORD',W/2,H/2);
+    return;
+  }
+  const data=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteTimeDomainData(data);
+  ctx.strokeStyle='#0f9f5f';ctx.lineWidth=2;
+  ctx.shadowColor='rgba(15,159,95,.5)';ctx.shadowBlur=7;
+  ctx.beginPath();
+  const step=W/data.length;
+  for(let i=0;i<data.length;i++){
+    const v=data[i]/128-1;
+    const y=H/2+v*H*.42;
+    i===0?ctx.moveTo(0,y):ctx.lineTo(i*step,y);
+  }
+  ctx.stroke();ctx.shadowBlur=0;
 }
 
 // ═══════════════════════════════════════════════════════════════
 // STEP 1 — CELL GRID
 // ═══════════════════════════════════════════════════════════════
 function buildCellGrid() {
+  // column headers
+  const colHdr=document.getElementById('colHeaders');
+  colHdr.innerHTML='abcdefghi'.split('').map(l=>`<div class="col-hdr">${l}</div>`).join('');
   const grid=document.getElementById('cellGrid');
   grid.innerHTML='';
-  const rows=[1,2,3];
-  rows.forEach(r=>{
-    const lbl=document.createElement('div');
-    lbl.className='cell-row-label';lbl.textContent='Row '+r;
-    // Actually just add cells directly
+  [1,2,3].forEach(r=>{
+    const rLabel=document.createElement('div');
+    rLabel.className='row-hdr';rLabel.textContent=r;
+    grid.appendChild(rLabel);
+    const row=document.createElement('div');
+    row.className='cell-row';
     ST.allCells.filter(c=>c[0]==r).forEach(cell=>{
       const btn=document.createElement('button');
       btn.className='cell-btn'+(ST.badCells.has(cell)?' bad':'');
       btn.textContent=cell;btn.dataset.cell=cell;
       btn.onclick=()=>{ST.badCells.has(cell)?ST.badCells.delete(cell):ST.badCells.add(cell);btn.classList.toggle('bad');updateBadCount();};
-      grid.appendChild(btn);
+      row.appendChild(btn);
     });
+    grid.appendChild(row);
   });
   updateBadCount();
 }
 function updateBadCount(){document.getElementById('badCount').textContent=ST.badCells.size;}
 function resetCells(){ST.badCells=new Set(['1d','1e','1i','2b','2g','3b','3d','3g']);buildCellGrid();}
 
+// Model card toggle
+document.querySelectorAll('.model-card').forEach(card=>{
+  card.addEventListener('click',()=>{
+    card.classList.toggle('selected');
+    const cb=card.querySelector('input[type=checkbox]');
+    if(cb) cb.checked=card.classList.contains('selected');
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════
 // STEP 2 — UPLOAD & PROCESS
 // ═══════════════════════════════════════════════════════════════
 function buildUploadGrid() {
-  const g=document.getElementById('uploadGrid');g.innerHTML='';
-  for(let i=0;i<5;i++){
-    const id='zipInput'+i, zoneId='zipZone'+i;
-    g.innerHTML+=`<label class="upload-zone" id="${zoneId}" onclick="if(!this.classList.contains('loaded'))document.getElementById('${id}').click()">
-      <span class="uz-icon">📁</span><div class="uz-num">ITERATION ${i+1}</div>
-      <div class="uz-hint">Click to upload ZIP<br><span style="font-size:.6rem;color:var(--dim)" id="zipReplace${i}" style="display:none">click again to replace</span></div>
-      <div class="uz-name" id="zipName${i}"></div>
-      <input type="file" id="${id}" accept=".zip">
-    </label>`;
-  }
-  for(let i=0;i<5;i++){
-    document.getElementById('zipInput'+i).addEventListener('change',e=>{
-      const f=e.target.files[0]; if(!f) return;
-      ST.zips[i]={file:f,name:f.name};
-      document.getElementById('zipName'+i).textContent=f.name;
-      document.getElementById('zipZone'+i).classList.add('loaded');
-      document.getElementById('processBtn').disabled=false;
-      checkZipsReady();
-    });
-  }
+  document.getElementById('multiZipInput').addEventListener('change', e => {
+    addZipFiles(Array.from(e.target.files));e.target.value='';
+  });
 }
-function checkZipsReady(){const ok=ST.zips.some(z=>z);document.getElementById('processBtn').disabled=!ok;}
-
+function handleDrop(e){
+  e.preventDefault();document.getElementById('dropZone').classList.remove('drag-over');
+  const files=Array.from(e.dataTransfer.files).filter(f=>f.name.toLowerCase().endsWith('.zip'));
+  if(files.length)addZipFiles(files);
+}
+function addZipFiles(files){
+  files.forEach(f=>{if(ST.zips.some(z=>z.name===f.name))return;ST.zips.push({file:f,name:f.name});});
+  renderZipList();
+}
+function removeZip(idx){ST.zips.splice(idx,1);renderZipList();}
+function renderZipList(){
+  const list=document.getElementById('zipList'),items=document.getElementById('zipListItems');
+  if(!ST.zips.length){list.style.display='none';document.getElementById('processBtn').disabled=true;return;}
+  list.style.display='block';
+  items.innerHTML=ST.zips.map((z,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:8px 12px;">
+      <span style="font-family:var(--mono);font-size:.6rem;color:var(--accent);min-width:82px">ITER ${i+1}</span>
+      <span style="font-family:var(--mono);font-size:.68rem;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${z.name}</span>
+      <span style="font-size:.62rem;color:var(--dim)">${(z.file.size/1024/1024).toFixed(1)} MB</span>
+      <button onclick="removeZip(${i})" style="background:none;border:1px solid rgba(255,45,85,.3);border-radius:4px;color:var(--red);cursor:pointer;padding:2px 8px;font-size:.6rem;font-family:var(--mono)">✕</button>
+    </div>`).join('');
+  document.getElementById('processBtn').disabled=false;
+}
+function sessionNorm(cellFeats){
+  const allF=Object.values(cellFeats).flat();if(!allF.length)return cellFeats;
+  const D=allF[0].length,N=allF.length;
+  const mean=new Array(D).fill(0),std=new Array(D).fill(0);
+  for(const f of allF)for(let j=0;j<D;j++)mean[j]+=f[j];
+  for(let j=0;j<D;j++)mean[j]/=N;
+  for(const f of allF)for(let j=0;j<D;j++)std[j]+=(f[j]-mean[j])**2;
+  for(let j=0;j<D;j++)std[j]=Math.sqrt(std[j]/N)||1e-8;
+  const out={};
+  for(const [cell,fList] of Object.entries(cellFeats))
+    out[cell]=fList.map(f=>f.map((v,j)=>(v-mean[j])/std[j]));
+  return out;
+}
 async function processAllZips() {
   document.getElementById('processBtn').disabled=true;
   document.getElementById('procProg').style.display='block';
   const status=document.getElementById('procStatus');status.innerHTML='';
-  const allX=[],allY=[];
-  let totalHits=0;
-  for(let i=0;i<5;i++){
-    if(!ST.zips[i]){ST.iterData[i]=null;continue;}
-    setProc(`Processing iteration ${i+1}…`,((i)/5)*100);
-    await sleep(10);
+  const allX=[],allY=[],allIter=[];
+  const N=ST.zips.length;
+  ST.iterData=Array(N).fill(null);
+  for(let i=0;i<N;i++){
+    setProc(`Processing iteration ${i+1} of ${N}…`,(i/N)*100);await sleep(10);
     try{
       const zip=await JSZip.loadAsync(ST.zips[i].file);
-      const hits={},feats={};
+      const hits={},rawFeats={};
       const entries=Object.values(zip.files).filter(f=>!f.dir);
       let done=0;
       for(const entry of entries){
         const ext=entry.name.split('.').pop().toLowerCase();
-        if(!['wav','m4a','mp3','ogg','flac'].includes(ext)) continue;
+        if(!['wav','m4a','mp3','ogg','flac'].includes(ext))continue;
         const stem=entry.name.split('/').pop().replace(/\.[^.]+$/,'');
-        const cell=parseCellName(stem); if(!cell||!ST.allCells.includes(cell)) continue;
-        const label=ST.badCells.has(cell)?1:0;
+        const cell=parseCellName(stem);if(!cell||!ST.allCells.includes(cell))continue;
         try{
           const buf=await entry.async('arraybuffer');
           const {signal,sr}=await decodeAudio(buf);
-          const onsets=detectOnsets(signal,sr);
-          if(!onsets.length) continue;
-          const cellHits=[];
+          const onsets=detectOnsets(signal,sr);if(!onsets.length)continue;
+          const cellHits=[],rawHits=[];
           for(const onset of onsets){
             const pre=Math.round(.02*sr),post=Math.round(.8*sr);
             const start=Math.max(0,onset-pre),end=Math.min(signal.length,onset+post);
-            let hit=signal.slice(start,end);
-            hit=trimTail(hit,sr,.05);
-            if(hit.length<Math.round(.03*sr)) continue;
-            cellHits.push(new Float32Array(hit));
+            let hit=signal.slice(start,end);hit=trimTail(hit,sr,.05);
+            if(hit.length<Math.round(.03*sr))continue;
+            rawHits.push(new Float32Array(hit));
           }
-          if(cellHits.length){
-            hits[cell]=cellHits;
-            feats[cell]=cellHits.map(h=>Array.from(extractFeatures(h,sr)));
-            cellHits.forEach((_,hi)=>{allX.push(feats[cell][hi]);allY.push(label);totalHits++;});
-          }
+          const refPeak=rawHits.reduce((mx,h)=>{let p=0;for(const v of h)if(Math.abs(v)>p)p=Math.abs(v);return Math.max(mx,p);},0);
+          rawHits.forEach((hit,hi)=>{
+            const q=hitQuality(hit,refPeak);
+            if(q.keep)cellHits.push(hit);
+            else{if(!hits[cell])hits[cell]=[];if(!hits[cell]._rejected)hits[cell]._rejected=[];hits[cell]._rejected.push({hit,idx:hi+1,reason:q.reason});}
+          });
+          if(cellHits.length){hits[cell]=cellHits;rawFeats[cell]=cellHits.map(h=>Array.from(extractFeatures(h,sr)));}
         }catch(e){console.warn('Skip',entry.name,e);}
-        done++;
-        setProc(`Iteration ${i+1}: processing ${done}/${entries.length} files…`,((i+done/entries.length)/5)*100);
-        await sleep(0);
+        done++;setProc(`Iteration ${i+1}: ${done}/${entries.length} files…`,((i+done/entries.length*.85)/N)*100);await sleep(0);
+      }
+      const feats=sessionNorm(rawFeats);
+      for(const cell of Object.keys(hits)){
+        const label=ST.badCells.has(cell)?1:0;
+        feats[cell].forEach(f=>{allX.push(f);allY.push(label);allIter.push(i);});
       }
       ST.iterData[i]={hits,feats};
-      status.innerHTML+=`<div style="margin-bottom:6px"><span class="status-chip chip-ok">✓ Iteration ${i+1}</span> <span style="font-size:.72rem;color:var(--dim)">${Object.keys(hits).length} cells · ${Object.values(hits).reduce((s,h)=>s+h.length,0)} hits</span></div>`;
-    }catch(e){status.innerHTML+=`<div><span class="status-chip chip-err">✗ Iteration ${i+1}</span> <span style="font-size:.72rem;color:var(--dim)">${e.message}</span></div>`;}
+      status.innerHTML+=`<div style="margin-bottom:6px"><span class="chip chip-ok">✓ Iter ${i+1}</span> <span style="font-size:.7rem;color:var(--dim)">${Object.keys(hits).length} cells · ${Object.values(hits).reduce((s,h)=>s+h.length,0)} hits</span></div>`;
+    }catch(e){status.innerHTML+=`<div><span class="chip chip-err">✗ Iter ${i+1}</span> <span style="font-size:.7rem;color:var(--dim)">${e.message}</span></div>`;}
   }
   if(allX.length<10){setProc('Error: not enough data',0);document.getElementById('processBtn').disabled=false;return;}
-  ST.dataset={X:allX,y:allY};
-  // Update step 4 split info
-  document.getElementById('splitInfo').textContent=`${allX.length} hits total — ~${Math.round(allX.length*.7)} train / ~${Math.round(allX.length*.3)} val`;
-  populateVizSelectors();
-  setProc('Done!',100);
+  ST.dataset={X:allX,y:allY,iter:allIter};
+  document.getElementById('splitInfo').textContent=`${allX.length} hits — ~${Math.round(allX.length*.7)} train / ~${Math.round(allX.length*.3)} val`;
+  populateVizSelectors();setProc('Done!',100);
   document.getElementById('dataReadyMsg').style.display='inline';
   document.getElementById('toStep3Btn').style.display='inline-block';
   document.getElementById('processBtn').disabled=false;
-  await sleep(500);
-  document.getElementById('procProg').style.display='none';
+  await sleep(500);document.getElementById('procProg').style.display='none';
 }
 function setProc(label,pct){document.getElementById('procLabel').textContent=label;document.getElementById('procBar').style.width=pct+'%';}
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE SESSION RECORDING (Step 2)
+// ═══════════════════════════════════════════════════════════════
+const LS={
+  stream:null,audioCtx:null,analyser:null,processor:null,
+  isRecording:false,chunks:[],animFrame:null,sr:48000,
+  currentIdx:0,cellData:{},pendingHits:null,
+  currentIter:1,iterations:[],
+};
+async function initLiveSession(){
+  try{
+    if(LS.stream)LS.stream.getTracks().forEach(t=>t.stop());
+    LS.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:1}});
+    LS.audioCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:48000});
+    LS.sr=LS.audioCtx.sampleRate;
+    LS.currentIdx=0;
+    LS.currentIter=1;
+    LS.cellData={};
+    LS.pendingHits=null;
+    LS.iterations=[];
+    document.getElementById('lsSRChip').textContent=`SR: ${LS.sr.toLocaleString()} Hz`;
+    document.getElementById('lsPermStatus').textContent='✓ Microphone ready';
+    document.getElementById('lsPermStatus').style.color='var(--accent)';
+    document.getElementById('lsSetupPanel').style.display='none';
+    document.getElementById('lsRecordPanel').style.display='block';
+    document.getElementById('lsIterNum').textContent=LS.currentIter;
+    document.getElementById('lsIterDone').textContent='0';
+    document.getElementById('lsCompleteMsg').style.display='none';
+    document.getElementById('lsInspectBtn').style.display='none';
+    document.getElementById('lsFinalizeBtn').disabled=false;
+    document.getElementById('lsAnotherBtn').disabled=false;
+    document.getElementById('lsProgress').style.display='none';
+    document.getElementById('lsProgBar').style.width='0%';
+    document.getElementById('lsRecordPanel').querySelector('.rec-controls').style.display='';
+    document.getElementById('lsActionRow').style.display='';
+    buildLsGrid();advanceLsCell();
+  }catch(err){
+    document.getElementById('lsPermStatus').textContent='✗ '+err.message;
+    document.getElementById('lsPermStatus').style.color='var(--red)';
+  }
+}
+function buildLsGrid(){
+  const g=document.getElementById('lsGrid');
+  g.innerHTML=ST.allCells.map((c,i)=>`<div class="lc-btn${ST.badCells.has(c)?' lc-bad':''}" id="lc-${c}" data-i="${i}">${c}</div>`).join('');
+}
+function advanceLsCell(){
+  if(LS.currentIdx>=ST.allCells.length){lsFinish();return;}
+  const cell=ST.allCells[LS.currentIdx];
+  document.querySelectorAll('.lc-btn').forEach((b,i)=>{
+    b.classList.remove('lc-active');
+    if(i<LS.currentIdx)b.classList.add('lc-done');
+  });
+  const btn=document.getElementById('lc-'+cell);if(btn)btn.classList.add('lc-active');
+  document.getElementById('lsCellName').textContent=cell.toUpperCase();
+  document.getElementById('lsCellIdx').textContent=LS.currentIdx+1;
+  const isBad=ST.badCells.has(cell);
+  document.getElementById('lsCellBadge').innerHTML=isBad?'<span class="chip chip-err">DAMAGED</span>':'<span class="chip chip-ok">HEALTHY</span>';
+  document.getElementById('lsStatus').textContent='Ready — press Record then tap the plate';
+  document.getElementById('lsHitPreview').style.display='none';
+  document.getElementById('lsConfirmBtn').disabled=true;
+  document.getElementById('lsRetryBtn').disabled=true;
+  LS.pendingHits=null;
+  // draw idle scope
+  const cv=document.getElementById('sessionCanvas');
+  drawScopeIdle(cv,'Tap the plate once or multiple times, then stop recording');
+}
+function drawScopeIdle(canvas,msg=''){
+  const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  ctx.fillStyle='#edf3ff';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(15,159,95,0.12)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=W/8){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=H/3){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  if(msg){ctx.fillStyle='rgba(15,159,95,0.78)';ctx.font='12px JetBrains Mono';ctx.textAlign='center';ctx.fillText(msg,W/2,H/2);}
+}
+async function lsStartRec(){
+  LS.chunks=[];LS.isRecording=true;
+  const source=LS.audioCtx.createMediaStreamSource(LS.stream);
+  LS.analyser=LS.audioCtx.createAnalyser();LS.analyser.fftSize=2048;
+  LS.processor=LS.audioCtx.createScriptProcessor(4096,1,1);
+  LS.processor.onaudioprocess=e=>{if(LS.isRecording)LS.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));};
+  source.connect(LS.analyser);source.connect(LS.processor);LS.processor.connect(LS.audioCtx.destination);
+  LS._source=source;
+  document.getElementById('lsRecBtn').style.display='none';
+  document.getElementById('lsStopBtn').style.display='';
+  const statusEl=document.getElementById('lsStatus');
+  statusEl.textContent='● RECORDING…';statusEl.className='rec-status live';
+  document.getElementById('lsSRDisplay').style.display='';
+  document.getElementById('lsSRDisplay').textContent=LS.sr.toLocaleString()+' Hz';
+  const cv=document.getElementById('sessionCanvas');
+  function animLoop(){
+    LS.animFrame=requestAnimationFrame(animLoop);
+    drawScope(cv,LS.analyser,false);
+  }
+  animLoop();
+}
+function lsStopRec(){
+  LS.isRecording=false;
+  cancelAnimationFrame(LS.animFrame);
+  if(LS.processor){LS.processor.disconnect();LS._source.disconnect();}
+  // concatenate
+  const totalLen=LS.chunks.reduce((s,c)=>s+c.length,0);
+  const signal=new Float32Array(totalLen);let offset=0;
+  for(const c of LS.chunks){signal.set(c,offset);offset+=c.length;}
+  document.getElementById('lsRecBtn').style.display='';
+  document.getElementById('lsStopBtn').style.display='none';
+  const statusEl=document.getElementById('lsStatus');
+  statusEl.className='rec-status';
+  // plot waveform
+  const cv=document.getElementById('sessionCanvas');
+  plotWaveforms(cv,[signal],LS.sr,'Recorded signal');
+  // detect hits
+  const onsets=detectOnsets(signal,LS.sr);
+  const hits=[];
+  for(const onset of onsets){
+    const start=Math.max(0,onset-Math.round(.02*LS.sr));
+    const end=Math.min(signal.length,onset+Math.round(.8*LS.sr));
+    let hit=signal.slice(start,end);hit=trimTail(hit,LS.sr,.05);
+    if(hit.length>=Math.round(.03*LS.sr))hits.push(new Float32Array(hit));
+  }
+  const refPeak=hits.reduce((mx,h)=>{let p=0;for(const v of h)if(Math.abs(v)>p)p=Math.abs(v);return Math.max(mx,p);},0);
+  LS.pendingHits=hits.filter(h=>hitQuality(h,refPeak).keep);
+  if(LS.pendingHits.length){
+    statusEl.textContent=`✓ ${LS.pendingHits.length} hit${LS.pendingHits.length>1?'s':''} detected — confirm or retry`;
+    statusEl.className='rec-status ok';
+    document.getElementById('lsHitCount').textContent=`${LS.pendingHits.length} hit${LS.pendingHits.length>1?'s':''} detected`;
+    document.getElementById('lsHitPreview').style.display='block';
+    document.getElementById('lsConfirmBtn').disabled=false;
+  }else{
+    statusEl.textContent=`No valid hits found — try tapping more firmly`;
+    document.getElementById('lsConfirmBtn').disabled=true;
+  }
+  document.getElementById('lsRetryBtn').disabled=false;
+}
+function lsConfirm(){
+  const cell=ST.allCells[LS.currentIdx];
+  LS.cellData[cell]=LS.pendingHits;
+  LS.currentIdx++;advanceLsCell();
+}
+function lsRetry(){LS.pendingHits=null;advanceLsCell();}
+function lsSkip(){LS.currentIdx++;advanceLsCell();}
+async function lsFinish(){
+  const iterHits={};
+  ST.allCells.forEach(cell=>{
+    if(LS.cellData[cell] && LS.cellData[cell].length) iterHits[cell]=LS.cellData[cell];
+  });
+  LS.iterations.push({hits:iterHits,sr:LS.sr});
+  document.getElementById('lsIterDone').textContent=String(LS.iterations.length);
+  document.getElementById('lsIterSummary').textContent=`${LS.iterations.length} iteration${LS.iterations.length>1?'s':''} recorded.`;
+  document.getElementById('lsRecordPanel').querySelector('.rec-controls').style.display='none';
+  document.getElementById('lsActionRow').style.display='none';
+  document.getElementById('lsCompleteMsg').style.display='block';
+}
+function lsStartAnotherIteration(){
+  LS.currentIter++;
+  LS.currentIdx=0;
+  LS.cellData={};
+  LS.pendingHits=null;
+  document.getElementById('lsIterNum').textContent=LS.currentIter;
+  document.getElementById('lsCompleteMsg').style.display='none';
+  document.getElementById('lsInspectBtn').style.display='none';
+  document.getElementById('lsFinalizeBtn').disabled=false;
+  document.getElementById('lsAnotherBtn').disabled=false;
+  document.getElementById('lsProgress').style.display='none';
+  document.getElementById('lsRecordPanel').querySelector('.rec-controls').style.display='';
+  document.getElementById('lsActionRow').style.display='';
+  buildLsGrid();
+  advanceLsCell();
+}
+async function lsFinalizeLiveDataset(){
+  if(!LS.iterations.length){
+    document.getElementById('lsProgLabel').textContent='No iterations recorded yet';
+    document.getElementById('lsProgress').style.display='block';
+    return;
+  }
+  document.getElementById('lsProgress').style.display='block';
+  document.getElementById('lsProgLabel').textContent='Building dataset from all live iterations…';
+  document.getElementById('lsProgBar').style.width='10%';
+  document.getElementById('lsFinalizeBtn').disabled=true;
+  document.getElementById('lsAnotherBtn').disabled=true;
+  await sleep(20);
+  const allX=[],allY=[],allIter=[];
+  ST.iterData=Array(LS.iterations.length).fill(null);
+  for(let i=0;i<LS.iterations.length;i++){
+    const rawFeats={},hits=LS.iterations[i].hits;
+    for(const [cell,cellHits] of Object.entries(hits)){
+      if(!cellHits?.length)continue;
+      rawFeats[cell]=cellHits.map(h=>Array.from(extractFeatures(h,LS.sr)));
+    }
+    const feats=sessionNorm(rawFeats);
+    ST.iterData[i]={hits,feats};
+    for(const [cell,fList] of Object.entries(feats)){
+      const label=ST.badCells.has(cell)?1:0;
+      fList.forEach(f=>{allX.push(f);allY.push(label);allIter.push(i);});
+    }
+    document.getElementById('lsProgBar').style.width=`${10+Math.round((i+1)/LS.iterations.length*80)}%`;
+    await sleep(10);
+  }
+  if(allX.length<10){
+    document.getElementById('lsProgLabel').textContent='Not enough data — record more cells/iterations';
+    document.getElementById('lsFinalizeBtn').disabled=false;
+    document.getElementById('lsAnotherBtn').disabled=false;
+    return;
+  }
+  ST.dataset={X:allX,y:allY,iter:allIter};
+  document.getElementById('splitInfo').textContent=`${allX.length} hits — ~${Math.round(allX.length*.7)} train / ~${Math.round(allX.length*.3)} val`;
+  populateVizSelectors();
+  document.getElementById('lsProgBar').style.width='100%';
+  document.getElementById('lsProgLabel').textContent=`Done! ${LS.iterations.length} live iteration(s) combined.`;
+  document.getElementById('lsInspectBtn').style.display='inline-flex';
+  if(LS.stream){LS.stream.getTracks().forEach(t=>t.stop());LS.stream=null;}
+}
 
 // ═══════════════════════════════════════════════════════════════
 // STEP 3 — VISUALIZE HITS
@@ -719,207 +1512,362 @@ function setProc(label,pct){document.getElementById('procLabel').textContent=lab
 function populateVizSelectors(){
   const iterSel=document.getElementById('vizIter'),cellSel=document.getElementById('vizCell');
   iterSel.innerHTML='<option value="">-- Iteration --</option>';
-  for(let i=0;i<5;i++) if(ST.iterData[i]) iterSel.innerHTML+=`<option value="${i}">Iteration ${i+1}</option>`;
+  for(let i=0;i<ST.iterData.length;i++)if(ST.iterData[i])iterSel.innerHTML+=`<option value="${i}">Iteration ${i+1}</option>`;
   cellSel.innerHTML='<option value="">-- Cell --</option>';
   ST.allCells.forEach(c=>{const bad=ST.badCells.has(c);cellSel.innerHTML+=`<option value="${c}">${c} (${bad?'BAD':'GOOD'})</option>`;});
 }
-
-async function showHits(){
+function plotOverlay(canvas, signals, title='') {
+  const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  ctx.fillStyle='#f7faff';ctx.fillRect(0,0,W,H);
+  if(!signals.length)return;
+  let maxAbs=0;
+  signals.forEach(sig=>{for(let i=0;i<sig.length;i++){const a=Math.abs(sig[i]);if(a>maxAbs)maxAbs=a;}});
+  if(maxAbs<1e-9)maxAbs=1;
+  const PAD={l:6,r:6,t:20,b:6},PW=W-PAD.l-PAD.r,PH=H-PAD.t-PAD.b;
+  if(title){ctx.fillStyle='#5b6f8b';ctx.font='11px JetBrains Mono';ctx.fillText(title,PAD.l,14);}
+  ctx.strokeStyle='#c5d4ea';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(PAD.l,H/2);ctx.lineTo(W-PAD.r,H/2);ctx.stroke();
+  const colors=['#00e87a','#38b6ff','#ffaa00','#ff2d55','#b67aff','#4dffb4','#ffda6a','#ff8c69','#c8a0ff'];
+  signals.forEach((sig,si)=>{
+    ctx.beginPath();ctx.strokeStyle=colors[si%colors.length];ctx.globalAlpha=.45;ctx.lineWidth=.8;
+    for(let i=0;i<PW;i++){const x=Math.floor(i/PW*sig.length),v=sig[x]/maxAbs;const px=PAD.l+i,py=PAD.t+PH*.5-v*PH*.45;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+    ctx.stroke();
+  });
+  ctx.globalAlpha=1;
+  const maxL=Math.max(...signals.map(s=>s.length));
+  const mean=new Float32Array(PW),std=new Float32Array(PW);
+  for(let i=0;i<PW;i++){const xi=Math.floor(i/PW*maxL);let s=0,s2=0,c=0;signals.forEach(sig=>{if(xi<sig.length){const v=sig[xi]/maxAbs;s+=v;s2+=v*v;c++;}});if(c){mean[i]=s/c;std[i]=Math.sqrt(Math.max(0,s2/c-(s/c)**2));}}
+  ctx.beginPath();
+  for(let i=0;i<PW;i++){const py=PAD.t+PH*.5-(mean[i]+std[i])*PH*.45;i===0?ctx.moveTo(PAD.l+i,py):ctx.lineTo(PAD.l+i,py);}
+  for(let i=PW-1;i>=0;i--){const py=PAD.t+PH*.5-(mean[i]-std[i])*PH*.45;ctx.lineTo(PAD.l+i,py);}
+  ctx.closePath();ctx.fillStyle='rgba(15,159,95,.10)';ctx.fill();
+  ctx.beginPath();ctx.strokeStyle='#0f9f5f';ctx.lineWidth=1.5;ctx.globalAlpha=.8;
+  for(let i=0;i<PW;i++){const py=PAD.t+PH*.5-mean[i]*PH*.45;i===0?ctx.moveTo(PAD.l+i,py):ctx.lineTo(PAD.l+i,py);}
+  ctx.stroke();ctx.globalAlpha=1;
+}
+function showHits(){
   const iterIdx=parseInt(document.getElementById('vizIter').value);
   const cell=document.getElementById('vizCell').value;
   const out=document.getElementById('vizOutput');
-  if(isNaN(iterIdx)||!cell||!ST.iterData[iterIdx]){out.innerHTML='<div class="explain">Select an iteration and cell above.</div>';return;}
-  const data=ST.iterData[iterIdx];
-  if(!data.hits[cell]){out.innerHTML=`<div class="explain">No hits found for cell <code>${cell}</code> in that iteration. It may have been skipped during processing.</div>`;return;}
-  const sigs=data.hits[cell];
-  const cond=ST.badCells.has(cell)?'BAD':'GOOD';
-  const color=cond==='BAD'?'var(--red)':'var(--green)';
+  if(isNaN(iterIdx)||!cell){out.innerHTML='<div class="callout">Select both an iteration and a cell.</div>';return;}
+  const iter=ST.iterData[iterIdx];if(!iter){out.innerHTML='<div class="callout">No data for that iteration.</div>';return;}
+  const hits=iter.hits[cell];if(!hits||!hits.length){out.innerHTML='<div class="callout">No hits found for '+cell+' in iteration '+(iterIdx+1)+'.</div>';return;}
+  const rej=hits._rejected||[];
+  const isBad=ST.badCells.has(cell);
   out.innerHTML=`
-    <div style="margin-bottom:10px"><span class="status-chip ${cond==='BAD'?'chip-err':'chip-ok'}">${cell.toUpperCase()} — ${cond}</span> <span style="font-size:.72rem;color:var(--dim)">${sigs.length} hits extracted</span></div>
-    <div class="card">
-      <div class="card-title">ALL HITS OVERLAID — ${cell.toUpperCase()} (iteration ${parseInt(document.getElementById('vizIter').value)+1})</div>
-      <div style="font-size:.72rem;color:var(--dim);margin-bottom:10px">All ${sigs.length} individual hits plotted together. Consistent shape = good extraction. The cyan line is the mean waveform; the shaded band is ±1 std deviation.</div>
-      <canvas id="vizCanvas" width="900" height="180" style="width:100%;border-radius:6px;"></canvas>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">${cell.toUpperCase()} — ${isBad?'<span style="color:var(--red)">DAMAGED</span>':'<span style="color:var(--accent)">HEALTHY</span>'} — ${hits.length} good hits${rej.length?' · '+rej.length+' rejected':''}</div>
+      <div style="font-size:.72rem;color:var(--dim);">Use the selector below to inspect individual hits.</div>
     </div>`;
-  const cv=document.getElementById('vizCanvas');
-  plotWaveforms(cv,sigs,48000,`Cell ${cell.toUpperCase()} — ${sigs.length} hits`);
+  if(rej.length){
+    out.innerHTML+=`<div class="card"><div class="card-title">REJECTED HITS</div><table><tr><th>#</th><th>Reason</th></tr>${rej.map((r,i)=>`<tr><td style="font-family:var(--mono)">${r.idx||i+1}</td><td style="font-size:.72rem;color:var(--dim)">${r.reason}</td></tr>`).join('')}</table></div>`;
+  }
+  out.innerHTML+=`
+    <div class="card">
+      <div class="card-title">Feature View (Selected Hit)</div>
+      <div class="selector-row">
+        <label style="font-family:var(--mono);font-size:.66rem;color:var(--dim);">
+          Hit
+          <select id="featHitSel" onchange="renderHitFeatureViews(${iterIdx},'${cell}',parseInt(this.value,10))">
+            ${hits.map((_,i)=>`<option value="${i+1}">Hit ${i+1}</option>`).join('')}
+          </select>
+        </label>
+        <span id="featMeta" style="font-family:var(--mono);font-size:.66rem;color:var(--dim);"></span>
+      </div>
+      <div class="canvas-box" style="margin-bottom:10px;"><canvas id="featTimeCanvas" width="880" height="150"></canvas></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="canvas-box"><canvas id="psdDbCanvas" width="430" height="180"></canvas></div>
+        <div class="canvas-box"><canvas id="psdLinCanvas" width="430" height="180"></canvas></div>
+      </div>
+      <div class="canvas-box"><canvas id="mfccCanvas" width="880" height="190"></canvas></div>
+    </div>`;
+  renderHitFeatureViews(iterIdx,cell,1);
+}
+function drawFeatureLine(canvas, yVals, title, color='#1778e6'){
+  const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  ctx.fillStyle='#f7faff';ctx.fillRect(0,0,W,H);
+  const PAD={l:42,r:14,t:24,b:26},PW=W-PAD.l-PAD.r,PH=H-PAD.t-PAD.b;
+  const min=Math.min(...yVals),max=Math.max(...yVals),rng=(max-min)||1e-9;
+  ctx.fillStyle='#5b6f8b';ctx.font='11px JetBrains Mono';ctx.fillText(title,PAD.l,14);
+  ctx.strokeStyle='#c5d4ea';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t+PH);ctx.lineTo(PAD.l+PW,PAD.t+PH);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,PAD.t+PH);ctx.stroke();
+  ctx.strokeStyle=color;ctx.lineWidth=1.8;
+  ctx.beginPath();
+  yVals.forEach((v,i)=>{
+    const x=PAD.l+(i/(yVals.length-1||1))*PW;
+    const y=PAD.t+(1-(v-min)/rng)*PH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle='#5b6f8b';ctx.font='10px JetBrains Mono';
+  ctx.fillText(min.toFixed(3),4,PAD.t+PH);
+  ctx.fillText(max.toFixed(3),4,PAD.t+8);
+}
+function drawPSDHw1(canvas,freqHz,psd,title,useDb=false,color='#1778e6'){
+  const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  ctx.fillStyle='#f7faff';ctx.fillRect(0,0,W,H);
+  const PAD={l:52,r:14,t:24,b:30},PW=W-PAD.l-PAD.r,PH=H-PAD.t-PAD.b;
+  const yVals=useDb?psd.map(v=>10*Math.log10(Math.max(v,1e-18))):psd;
+  let yMin=Math.min(...yVals),yMax=Math.max(...yVals);
+  if(!Number.isFinite(yMin)||!Number.isFinite(yMax)||yMax<=yMin){yMin=0;yMax=1;}
+  const fMax=freqHz[freqHz.length-1]||1;
+  ctx.fillStyle='#5b6f8b';ctx.font='11px JetBrains Mono';ctx.fillText(title,PAD.l,14);
+  ctx.strokeStyle='#c5d4ea';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t+PH);ctx.lineTo(PAD.l+PW,PAD.t+PH);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,PAD.t+PH);ctx.stroke();
+  ctx.strokeStyle=color;ctx.lineWidth=1.2;ctx.beginPath();
+  yVals.forEach((y,i)=>{
+    const x=PAD.l+(freqHz[i]/fMax)*PW;
+    const py=PAD.t+(1-(y-yMin)/(yMax-yMin))*PH;
+    i===0?ctx.moveTo(x,py):ctx.lineTo(x,py);
+  });
+  ctx.stroke();
+  ctx.fillStyle='#5b6f8b';ctx.font='10px JetBrains Mono';
+  ctx.fillText(useDb?'PSD [dB]':'PSD [a.u.^2/Hz]',4,PAD.t+10);
+  ctx.fillText((fMax/1000).toFixed(1)+' kHz',PAD.l+PW-34,H-8);
+  const xTicks=4;
+  for(let i=0;i<=xTicks;i++){
+    const fk=i/xTicks*fMax;
+    const x=PAD.l+i/xTicks*PW;
+    ctx.fillText((fk/1000).toFixed(1),x-8,PAD.t+PH+14);
+  }
+}
+function jetColor(t){
+  const x=Math.max(0,Math.min(1,t));
+  const r=Math.max(0,Math.min(1,1.5-Math.abs(4*x-3)));
+  const g=Math.max(0,Math.min(1,1.5-Math.abs(4*x-2)));
+  const b=Math.max(0,Math.min(1,1.5-Math.abs(4*x-1)));
+  return `rgb(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)})`;
+}
+function drawMfccHeatmap(canvas, matrix){
+  const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+  ctx.fillStyle='#f7faff';ctx.fillRect(0,0,W,H);
+  const nMFCC=matrix.length,nFrames=nMFCC?matrix[0].length:0;
+  const PAD={l:52,r:24,t:24,b:34},PW=W-PAD.l-PAD.r,PH=H-PAD.t-PAD.b;
+  ctx.fillStyle='#5b6f8b';ctx.font='11px JetBrains Mono';ctx.fillText('MFCC Heatmap (coefficients × frames)',PAD.l,14);
+  if(!nFrames){ctx.fillText('No MFCC frames available',PAD.l,PAD.t+16);return;}
+  let vMin=Infinity,vMax=-Infinity;
+  for(let c=0;c<nMFCC;c++)for(let t=0;t<nFrames;t++){const v=matrix[c][t];if(v<vMin)vMin=v;if(v>vMax)vMax=v;}
+  const rng=(vMax-vMin)||1e-9;
+  const cw=PW/nFrames,ch=PH/nMFCC;
+  for(let c=0;c<nMFCC;c++){
+    for(let t=0;t<nFrames;t++){
+      const norm=(matrix[c][t]-vMin)/rng;
+      ctx.fillStyle=jetColor(norm);
+      const x=PAD.l+t*cw;
+      const y=PAD.t+(nMFCC-1-c)*ch;
+      ctx.fillRect(x,y,cw+0.6,ch+0.6);
+    }
+  }
+  ctx.strokeStyle='#9fb5d4';ctx.lineWidth=1;
+  ctx.strokeRect(PAD.l,PAD.t,PW,PH);
+  ctx.fillStyle='#5b6f8b';ctx.font='10px JetBrains Mono';
+  ctx.fillText('Frame Index',PAD.l+PW/2-30,H-8);
+  ctx.save();
+  ctx.translate(12,PAD.t+PH/2+20);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('MFCC Index',0,0);
+  ctx.restore();
+  const xTicks=Math.min(8,nFrames-1);
+  for(let i=0;i<=xTicks;i++){
+    const fi=Math.round(i*(nFrames-1)/(xTicks||1));
+    const x=PAD.l+fi*cw;
+    ctx.fillText(String(fi),x-4,PAD.t+PH+14);
+  }
+  const yTicks=Math.min(6,nMFCC-1);
+  for(let i=0;i<=yTicks;i++){
+    const ci=Math.round(i*(nMFCC-1)/(yTicks||1));
+    const y=PAD.t+(nMFCC-1-ci)*ch;
+    ctx.fillText(String(ci),PAD.l-20,y+3);
+  }
+  const bx=W-14,by=PAD.t,bh=PH,bw=10;
+  for(let i=0;i<bh;i++){
+    const t=1-i/Math.max(1,bh-1);
+    ctx.fillStyle=jetColor(t);
+    ctx.fillRect(bx,bh-i+by,bw,1);
+  }
+  ctx.strokeStyle='#9fb5d4';ctx.strokeRect(bx,by,bw,bh);
+  ctx.fillStyle='#5b6f8b';ctx.fillText(vMax.toFixed(2),bx-2,by-4);
+  ctx.fillText(vMin.toFixed(2),bx-2,by+bh+12);
+}
+function renderHitFeatureViews(iterIdx,cell,hitNo){
+  const iter=ST.iterData[iterIdx];if(!iter)return;
+  const hits=iter.hits[cell];if(!hits||!hits.length)return;
+  const hit=hits[Math.max(0,Math.min(hits.length-1,hitNo-1))];
+  plotWaveforms(document.getElementById('featTimeCanvas'),[hit],ST.targetSR,`Time series · Hit ${hitNo}`);
+  const dcHit=new Float32Array(hit.length);
+  let mu=0;for(let i=0;i<hit.length;i++)mu+=hit[i];mu/=Math.max(1,hit.length);
+  for(let i=0;i<hit.length;i++)dcHit[i]=hit[i]-mu;
+  const {freqHz,psd}=welchPSDPhysical(dcHit,ST.targetSR,1024,512);
+  const {matrix,nFrames}=computeMFCCMap(hit,ST.targetSR,13,1024,256);
+  drawPSDHw1(document.getElementById('psdDbCanvas'),freqHz,psd,`PSD - Hit ${hitNo} [dB scale]`,true,'#1778e6');
+  drawPSDHw1(document.getElementById('psdLinCanvas'),freqHz,psd,`PSD - Hit ${hitNo} [linear scale]`,false,'#1778e6');
+  drawMfccHeatmap(document.getElementById('mfccCanvas'),matrix);
+  document.getElementById('featMeta').textContent=`Samples: ${hit.length} · target SR: ${ST.targetSR.toLocaleString()} Hz · MFCC frames: ${nFrames}`;
 }
 
 // ═══════════════════════════════════════════════════════════════
 // STEP 4 — TRAIN MODELS
 // ═══════════════════════════════════════════════════════════════
-// Model checkbox toggle — use mousedown + stopPropagation to prevent
-// bubbling from child elements causing double/triple toggles
-document.querySelectorAll('.model-check').forEach(el=>{
-  el.addEventListener('mousedown', e=>{
-    e.preventDefault();           // stop focus flicker
-    e.stopPropagation();          // stop bubbling from child clicks
-    el.classList.toggle('selected');
-  });
-  // Block all child click events from re-triggering the parent
-  el.querySelectorAll('*').forEach(child=>{
-    child.addEventListener('mousedown', e=>e.stopPropagation());
-  });
-});
-
 async function trainModels(){
-  if(!ST.dataset){alert('Process data first (Step 2).');return;}
-  const selected=[];
-  if(document.getElementById('chk-KNN').classList.contains('selected')) selected.push('KNN');
-  if(document.getElementById('chk-DT').classList.contains('selected')) selected.push('DT');
-  if(document.getElementById('chk-LR').classList.contains('selected')) selected.push('LR');
-  if(document.getElementById('chk-SVM').classList.contains('selected')) selected.push('SVM');
-  if(!selected.length){alert('Select at least one model.');return;}
-
-  document.getElementById('trainBtn').disabled=true;
-  document.getElementById('trainProg').style.display='block';
-  const res=document.getElementById('trainResults');res.innerHTML='';
-
+  if(!ST.dataset){alert('No dataset — complete Step 2 first.');return;}
+  const sel={KNN:document.getElementById('chk-KNN').classList.contains('selected'),DT:document.getElementById('chk-DT').classList.contains('selected'),LR:document.getElementById('chk-LR').classList.contains('selected'),SVM:document.getElementById('chk-SVM').classList.contains('selected')};
+  if(!Object.values(sel).some(Boolean)){alert('Select at least one model.');return;}
+  document.getElementById('trainBtn').disabled=true;document.getElementById('trainProg').style.display='block';document.getElementById('trainResults').innerHTML='';
   const {X,y}=ST.dataset;
   const {trainIdx,valIdx}=stratifiedSplit(X,y,.3);
-  const Xtr=trainIdx.map(i=>X[i]),ytr=trainIdx.map(i=>y[i]);
-  const Xval=valIdx.map(i=>X[i]),yval=valIdx.map(i=>y[i]);
-
-  setTrain('Scaling features…',5); await sleep(10);
-  const scaler=new StandardScaler();
-  const XtrS=scaler.fitTr(Xtr);
-  const XvalS=scaler.tr(Xval);
-  ST.scaler=scaler;
-
-  const rows=[];
-  const modelMap={KNN:()=>new KNN(5),DT:()=>new DT(6),LR:()=>new LR(400,.05,1),SVM:()=>new SVM(1,2000)};
-
-  for(let mi=0;mi<selected.length;mi++){
-    const name=selected[mi];
-    setTrain(`Training ${name}… (${mi+1}/${selected.length})`,10+mi/selected.length*80);
-    await sleep(20);
-    const clf=modelMap[name]().fit(XtrS,ytr);
-    ST.models[name]=clf;
-    const predTr=clf.predict(XtrS),predVal=clf.predict(XvalS);
-    const accTr=accuracy(ytr,predTr),accVal=accuracy(yval,predVal);
-    const drop=(accTr-accVal)*100;
-    rows.push({name,accTr,accVal,drop,cmTr:confMatrix(ytr,predTr),cmVal:confMatrix(yval,predVal)});
-    await sleep(0);
+  const Xtr=trainIdx.map(i=>X[i]),yTr=trainIdx.map(i=>y[i]);
+  const Xv=valIdx.map(i=>X[i]),yV=valIdx.map(i=>y[i]);
+  ST.scaler=new StandardScaler();
+  const XtrS=prepX(Xtr,ST.scaler,true),XvS=prepX(Xv,ST.scaler,false);
+  ST.models={};const res=[];
+  const tasks=[];
+  if(sel.KNN)tasks.push({name:'KNN',fn:()=>{const m=new KNN(5).fit(XtrS,yTr);ST.models['KNN']=m;return{pred:m.predict(XvS),m};}});
+  if(sel.DT)tasks.push({name:'DT',fn:()=>{const m=new DT(6).fit(Xtr,yTr);ST.models['DT']=m;return{pred:m.predict(Xv),m};},raw:true});
+  if(sel.LR)tasks.push({name:'LR',fn:()=>{const m=new LR(400,.05,1).fit(XtrS,yTr);ST.models['LR']=m;return{pred:m.predict(XvS),m};}});
+  if(sel.SVM)tasks.push({name:'SVM',fn:()=>{const n0=yTr.filter(v=>v===0).length,n1=yTr.filter(v=>v===1).length,tot=yTr.length;const m=new SVM(1,4000,tot/n1||1,tot/n0||1).fit(XtrS,yTr);ST.models['SVM']=m;return{pred:m.predict(XvS),m};}});
+  let done=0;
+  for(const t of tasks){
+    setTrain(`Training ${t.name}…`,done/tasks.length*90);await sleep(10);
+    const {pred,m}=t.fn();
+    const acc=accuracy(yV,pred),cm=confMatrix(yV,pred);
+    res.push({name:t.name,acc,cm});done++;
   }
-
   setTrain('Done!',100);
-  // Render results table
-  let html=`<div class="card"><div class="card-title">TRAINING RESULTS</div>
-    <table><tr><th>Model</th><th>Train Acc</th><th>Val Acc</th><th>Train→Val Drop</th></tr>`;
-  rows.forEach(r=>{
-    const cls=r.accVal>.90?'acc-good':r.accVal>.75?'acc-warn':'acc-bad';
-    const drCls=r.drop<5?'acc-good':r.drop<15?'acc-warn':'acc-bad';
-    html+=`<tr><td style="font-family:var(--mono)">${r.name}</td><td class="${cls}">${(r.accTr*100).toFixed(2)}%</td><td class="${cls}">${(r.accVal*100).toFixed(2)}%</td><td class="${drCls}">${r.drop.toFixed(2)}pp</td></tr>`;
-  });
-  html+=`</table></div>`;
-
-  // Confusion matrices
-  html+=`<div class="card"><div class="card-title">CONFUSION MATRICES — TRAINING (left) vs VALIDATION (right)</div>
-    <div style="font-size:.72rem;color:var(--dim);margin-bottom:12px">Green diagonal = correct predictions. Red off-diagonal = errors. A gap between training and validation is normal — it means the model has memorized some training patterns.</div>
-    <div style="margin-bottom:8px;font-family:var(--mono);font-size:.6rem;color:var(--dim)">← TRAINING &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; VALIDATION →</div>
-    <div style="display:grid;grid-template-columns:repeat(${rows.length*2},1fr);gap:12px">`;
-  rows.forEach(r=>{html+=`<canvas id="cmTr_${r.name}" width="320" height="320" style="width:100%;border-radius:8px;"></canvas>`;});
-  rows.forEach(r=>{html+=`<canvas id="cmVal_${r.name}" width="320" height="320" style="width:100%;border-radius:8px;"></canvas>`;});
-  html+=`</div></div>`;
-  res.innerHTML=html;
-  rows.forEach(r=>{drawCM(document.getElementById('cmTr_'+r.name),r.cmTr,r.name+' Train');drawCM(document.getElementById('cmVal_'+r.name),r.cmVal,r.name+' Val');});
-
-  await sleep(300);document.getElementById('trainProg').style.display='none';
-  document.getElementById('trainBtn').disabled=false;
-  document.getElementById('toStep5Btn').style.display='inline-block';
+  const rows=res.sort((a,b)=>b.acc-a.acc).map(({name,acc,cm})=>{
+    const cls=acc>.8?'acc-good':acc>.65?'acc-warn':'acc-bad';
+    return `<tr><td style="font-family:var(--mono)">${name}</td><td class="${cls}">${(acc*100).toFixed(2)}%</td><td><div style="background:var(--s3);border-radius:3px;height:4px;width:${(acc*100).toFixed(0)}%;background:var(--accent);min-width:2px"></div></td></tr>`;
+  }).join('');
+  document.getElementById('trainResults').innerHTML=`
+    <div class="card">
+      <div class="card-title">Validation Results — ${valIdx.length} hits</div>
+      <table><tr><th>Model</th><th>Val Accuracy</th><th>Bar</th></tr>${rows}</table>
+    </div>
+    <div class="card">
+      <div class="card-title">Confusion Matrices</div>
+      <div class="cm-grid">${res.map(r=>`<div><div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);text-align:center;margin-bottom:6px">${r.name}</div><canvas id="cm_${r.name}" width="200" height="200" style="width:100%;border-radius:6px;"></canvas></div>`).join('')}</div>
+    </div>`;
+  res.forEach(r=>drawCM(document.getElementById('cm_'+r.name),r.cm,`${r.name} (${(r.acc*100).toFixed(1)}%)`));
+  document.getElementById('toStep5Btn').style.display='inline-flex';
+  document.getElementById('trainBtn').disabled=false;await sleep(400);document.getElementById('trainProg').style.display='none';
 }
 function setTrain(label,pct){document.getElementById('trainLabel').textContent=label;document.getElementById('trainBar').style.width=pct+'%';}
 
 // ═══════════════════════════════════════════════════════════════
-// STEP 5 — INFERENCE ON HW2 DATA
+// STEP 5 — INFERENCE / ROBUSTNESS
 // ═══════════════════════════════════════════════════════════════
-document.getElementById('infInput').addEventListener('change',e=>{
-  const f=e.target.files[0];if(!f)return;
-  ST.inferenceFile=f;
-  document.getElementById('infName').textContent=f.name;
-  document.getElementById('infZone').classList.add('loaded');
+ST.inferenceZips=[];
+document.getElementById('infMultiInput').addEventListener('change',e=>{addInfZips(Array.from(e.target.files));e.target.value='';});
+function handleInfDrop(e){
+  e.preventDefault();document.getElementById('infDropZone').classList.remove('drag-over');
+  const files=Array.from(e.dataTransfer.files).filter(f=>f.name.toLowerCase().endsWith('.zip'));
+  if(files.length)addInfZips(files);
+}
+function addInfZips(files){
+  files.forEach(f=>{if(!ST.inferenceZips.some(z=>z.name===f.name))ST.inferenceZips.push({file:f,name:f.name});});
+  renderInfZipList();
+}
+function renderInfZipList(){
+  const list=document.getElementById('infZipList'),items=document.getElementById('infZipItems');
+  if(!ST.inferenceZips.length){list.style.display='none';document.getElementById('infBtn').disabled=true;return;}
+  list.style.display='block';
+  items.innerHTML=ST.inferenceZips.map((z,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:8px 12px;">
+      <span style="font-family:var(--mono);font-size:.6rem;color:var(--accent);min-width:60px">INF ${i+1}</span>
+      <span style="font-family:var(--mono);font-size:.68rem;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${z.name}</span>
+      <button onclick="removeInfZip(${i})" style="background:none;border:1px solid rgba(255,45,85,.3);border-radius:4px;color:var(--red);cursor:pointer;padding:2px 8px;font-size:.6rem;font-family:var(--mono)">✕</button>
+    </div>`).join('');
   document.getElementById('infBtn').disabled=!Object.keys(ST.models).length;
-});
-
+}
+function removeInfZip(idx){ST.inferenceZips.splice(idx,1);renderInfZipList();}
 async function runInference(){
-  if(!ST.inferenceFile||!Object.keys(ST.models).length) return;
-  document.getElementById('infBtn').disabled=true;
-  document.getElementById('infProg').style.display='block';
+  if(!Object.keys(ST.models).length){alert('Train models first (Step 4).');return;}
+  document.getElementById('infBtn').disabled=true;document.getElementById('infProg').style.display='block';
   const out=document.getElementById('infResults');out.innerHTML='';
-  setInf('Loading inference ZIP…',5);await sleep(10);
-
-  const zip=await JSZip.loadAsync(ST.inferenceFile);
-  const entries=Object.values(zip.files).filter(f=>!f.dir);
-  const infX=[],infY=[];let done=0;
-
-  for(const entry of entries){
-    const ext=entry.name.split('.').pop().toLowerCase();
-    if(!['wav','m4a','mp3','ogg'].includes(ext)) continue;
-    const fname=entry.name.split('/').pop();
-    // Match: 1a_hit1.wav or similar
-    const m=fname.toLowerCase().match(/^([1-3][a-i])_hit\d+/);
-    if(!m) continue;
-    const cell=m[1],label=ST.badCells.has(cell)?1:0;
+  const infX=[],infY=[];
+  setInf('Processing inference ZIPs…',10);await sleep(10);
+  for(const zEntry of ST.inferenceZips){
+    const zipRawX=[],zipY=[];
     try{
-      const buf=await entry.async('arraybuffer');
-      const {signal,sr}=await decodeAudio(buf);
-      const feat=Array.from(extractFeatures(signal,sr));
-      infX.push(feat);infY.push(label);
+      const zip=await JSZip.loadAsync(zEntry.file);
+      const entries=Object.values(zip.files).filter(f=>!f.dir);
+      for(const entry of entries){
+        const ext=entry.name.split('.').pop().toLowerCase();
+        if(!['wav','m4a','mp3','ogg','flac'].includes(ext))continue;
+        const stem=entry.name.split('/').pop().replace(/\.[^.]+$/,'');
+        // pre-extracted: 1a_hit1.wav
+        const hitM=stem.match(/^([a-z]?\d+[a-z]?|[a-z]\d+)_hit\d+$/i);
+        if(hitM){
+          const cell=parseCellName(hitM[1]);if(!cell||!ST.allCells.includes(cell))continue;
+          const label=ST.badCells.has(cell)?1:0;
+          const buf=await entry.async('arraybuffer');
+          const {signal,sr}=await decodeAudio(buf);
+          zipRawX.push(Array.from(extractFeatures(new Float32Array(signal),sr)));zipY.push(label);
+          continue;
+        }
+        const cell=parseCellName(stem);if(!cell||!ST.allCells.includes(cell))continue;
+        const label=ST.badCells.has(cell)?1:0;
+        const buf=await entry.async('arraybuffer');
+        const {signal,sr}=await decodeAudio(buf);
+        const onsets=detectOnsets(signal,sr);
+        for(const onset of onsets){
+          const start=Math.max(0,onset-Math.round(.02*sr));
+          let hit=signal.slice(start,Math.min(signal.length,onset+Math.round(.8*sr)));
+          hit=trimTail(hit,sr,.05);
+          if(hit.length<Math.round(.03*sr))continue;
+          zipRawX.push(Array.from(extractFeatures(hit,sr)));zipY.push(label);
+        }
+      }
     }catch(e){console.warn(e);}
-    done++;
-    if(done%5===0){setInf(`Extracting features: ${done}/${entries.length} files…`,5+done/entries.length*60);await sleep(0);}
+    if(zipRawX.length){
+      const D=zipRawX[0].length,Nzip=zipRawX.length;
+      const mean=new Array(D).fill(0),std=new Array(D).fill(0);
+      for(const f of zipRawX)for(let j=0;j<D;j++)mean[j]+=f[j];
+      for(let j=0;j<D;j++)mean[j]/=Nzip;
+      for(const f of zipRawX)for(let j=0;j<D;j++)std[j]+=(f[j]-mean[j])**2;
+      for(let j=0;j<D;j++)std[j]=Math.sqrt(std[j]/Nzip)||1e-8;
+      for(let i=0;i<zipRawX.length;i++){infX.push(zipRawX[i].map((v,j)=>(v-mean[j])/std[j]));infY.push(zipY[i]);}
+    }
   }
-
-  if(!infX.length){out.innerHTML='<div class="explain">No matching files found. Expected names like <code>1a_hit1.wav</code></div>';document.getElementById('infBtn').disabled=false;document.getElementById('infProg').style.display='none';return;}
-
-  setInf('Classifying…',70);await sleep(10);
-  const infXS=ST.scaler.tr(infX);
+  if(!infX.length){out.innerHTML='<div class="callout">No matching files found.</div>';document.getElementById('infBtn').disabled=false;document.getElementById('infProg').style.display='none';return;}
+  setInf('Classifying…',80);await sleep(10);
+  const infXS=prepX(infX,ST.scaler,false);
   const modelNames=Object.keys(ST.models);
   const results={};
   modelNames.forEach(name=>{
-    const pred=ST.models[name].predict(infXS);
-    const acc=accuracy(infY,pred);
-    results[name]={acc,cm:confMatrix(infY,pred)};
+    const m=ST.models[name];
+    const pred=m.predictRaw?m.predictRaw(infX):m.predict(infXS);
+    results[name]={acc:accuracy(infY,pred),cm:confMatrix(infY,pred)};
   });
-
   setInf('Done!',100);
-
-  // Build 3-way table if we have train/val results
-  let html=`<div class="card"><div class="card-title">HW2 TEST ACCURACY</div>
-    <div style="font-size:.72rem;color:var(--dim);margin-bottom:12px">These models were trained on HW3 data and are now tested on HW2 data — a completely different recording session. A large accuracy drop is expected and reveals how robust each model truly is.</div>
-    <table><tr><th>Model</th><th>Test Acc (HW2)</th><th>Interpretation</th></tr>`;
-  const drops=[];
-  modelNames.forEach(name=>{
-    const acc=results[name].acc;
+  const drops=modelNames.map(name=>({name,acc:results[name].acc})).sort((a,b)=>b.acc-a.acc);
+  const best=drops[0];
+  let html=`<div class="card"><div class="card-title">Inference Accuracy — ${infX.length} hits</div>
+    <div style="font-size:.72rem;color:var(--dim);margin-bottom:12px">Gap between Step 4 val and this score shows cross-session generalisation.</div>
+    <table><tr><th>Model</th><th>Test Acc</th><th>Interpretation</th></tr>`;
+  drops.forEach(({name,acc})=>{
     const cls=acc>.75?'acc-good':acc>.6?'acc-warn':'acc-bad';
-    const note=acc>.75?'Good generalization':acc>.6?'Moderate generalization':'Poor generalization — session-specific features learned';
-    html+=`<tr><td style="font-family:var(--mono)">${name}</td><td class="${cls}">${(acc*100).toFixed(2)}%</td><td style="font-size:.72rem;color:var(--dim)">${note}</td></tr>`;
-    drops.push({name,acc});
+    const note=acc>.75?'Good generalisation':acc>.6?'Moderate — some session drift':'Poor — session-specific features';
+    html+=`<tr><td style="font-family:var(--mono)">${name}</td><td class="${cls}">${(acc*100).toFixed(2)}%</td><td style="font-size:.7rem;color:var(--dim)">${note}</td></tr>`;
   });
-  const best=drops.sort((a,b)=>b.acc-a.acc)[0];
-  html+=`</table><div style="margin-top:10px;font-size:.75rem;color:var(--green)">✓ Most robust model on unseen data: <strong style="font-family:var(--mono)">${best.name}</strong> (${(best.acc*100).toFixed(2)}%)</div></div>`;
-
-  // Confusion matrices
-  html+=`<div class="card"><div class="card-title">CONFUSION MATRICES — HW2 TEST SET</div>
-    <div class="cm-grid">`;
-  modelNames.forEach(name=>{html+=`<div><div style="font-family:var(--mono);font-size:.65rem;color:var(--dim);text-align:center;margin-bottom:6px">${name}</div><canvas id="infCM_${name}" width="320" height="320" style="width:100%;border-radius:8px;"></canvas></div>`;});
+  html+=`</table><div style="margin-top:12px;font-size:.75rem;color:var(--accent)">✓ Most robust: <strong style="font-family:var(--mono)">${best.name}</strong> (${(best.acc*100).toFixed(2)}%)</div></div>`;
+  html+=`<div class="card"><div class="card-title">Confusion Matrices — Inference Set</div><div class="cm-grid">`;
+  drops.forEach(({name})=>{html+=`<div><div style="font-family:var(--mono);font-size:.62rem;color:var(--dim);text-align:center;margin-bottom:5px">${name}</div><canvas id="infCM_${name}" width="200" height="200" style="width:100%;border-radius:6px;"></canvas></div>`;});
   html+=`</div></div>`;
   out.innerHTML=html;
-  modelNames.forEach(name=>drawCM(document.getElementById('infCM_'+name),results[name].cm,`${name} (${(results[name].acc*100).toFixed(1)}%)`));
-
-  await sleep(300);document.getElementById('infProg').style.display='none';
-  document.getElementById('infBtn').disabled=false;
+  drops.forEach(({name})=>drawCM(document.getElementById('infCM_'+name),results[name].cm,`${name} (${(results[name].acc*100).toFixed(1)}%)`));
+  await sleep(300);document.getElementById('infProg').style.display='none';document.getElementById('infBtn').disabled=false;
 }
 function setInf(label,pct){document.getElementById('infLabel').textContent=label;document.getElementById('infBar').style.width=pct+'%';}
 
 // ═══════════════════════════════════════════════════════════════
-// STEP 6 — SINGLE HIT CLASSIFY
+// STEP 6 — SINGLE HIT CLASSIFY (Upload)
 // ═══════════════════════════════════════════════════════════════
 let singleSignal=null,singleSR=48000;
 document.getElementById('singleInput').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   document.getElementById('singleName').textContent=f.name;
-  document.getElementById('singleZone').classList.add('loaded');
+  document.getElementById('singleZone').style.borderColor='rgba(0,232,122,.4)';
   try{
     const buf=await f.arrayBuffer();
     const {signal,sr}=await decodeAudio(buf);
@@ -927,24 +1875,141 @@ document.getElementById('singleInput').addEventListener('change',async e=>{
     const cv=document.getElementById('singleCanvas');cv.style.display='block';
     plotWaveforms(cv,[signal],sr,'Uploaded hit waveform');
     document.getElementById('singleBtn').disabled=!Object.keys(ST.models).length;
-  }catch(e){alert('Could not decode audio: '+e.message);}
+  }catch(e){alert('Could not decode: '+e.message);}
 });
-
 async function classifySingle(){
-  if(!singleSignal||!Object.keys(ST.models).length) return;
+  if(!singleSignal||!Object.keys(ST.models).length)return;
   const feat=Array.from(extractFeatures(new Float32Array(singleSignal),singleSR));
-  const featS=ST.scaler.tr([feat]);
+  const featS=prepX([feat],ST.scaler,false);
   const out=document.getElementById('singleResults');
   let html=`<div class="infer-cards">`;
   Object.keys(ST.models).forEach(name=>{
-    const pred=ST.models[name].predict(featS)[0];
-    const label=pred===0?'GOOD':'BAD',cls=pred===0?'good':'bad';
+    const m=ST.models[name];
+    const pred=(m.predict?m.predict(featS):m.predictRaw([feat]))[0];
+    let scoreTxt=pred===0?'No damage':'Damage detected';
+    if(m.decisionScore){const s=m.decisionScore(featS)[0];scoreTxt=`margin ${s.toFixed(3)}`;}
+    else if(m.decisionScoreRaw){const s=m.decisionScoreRaw([feat])[0];scoreTxt=`margin ${s.toFixed(3)}`;}
+    const label=pred===0?'HEALTHY':'DAMAGED',cls=pred===0?'good':'bad';
     html+=`<div class="infer-card"><div class="infer-model">${name}</div>
       <div class="infer-result ${cls}">${label}</div>
-      <div class="infer-conf">${pred===0?'No damage detected':'Damage detected'}</div></div>`;
+      <div class="infer-conf">${scoreTxt}</div></div>`;
   });
   html+=`</div>`;
   out.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 6 — LIVE RECORD & CLASSIFY
+// ═══════════════════════════════════════════════════════════════
+const LR2={
+  stream:null,audioCtx:null,analyser:null,processor:null,
+  isRecording:false,chunks:[],animFrame:null,sr:48000,
+  capturedSignal:null,capturedHit:null,
+};
+async function initLiveRecord(){
+  try{
+    LR2.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:1}});
+    LR2.audioCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:48000});
+    LR2.sr=LR2.audioCtx.sampleRate;
+    document.getElementById('lrSRChip').textContent=LR2.sr.toLocaleString()+' Hz';
+    document.getElementById('lrSetupMsg').style.display='none';
+    document.getElementById('lrMainPanel').style.display='block';
+    document.getElementById('lrPermStatus').textContent='✓ Microphone ready';
+    // draw idle scope
+    const cv=document.getElementById('liveCanvas');
+    drawScopeIdle(cv,'Press RECORD then tap the plate once');
+  }catch(err){
+    document.getElementById('lrPermStatus').textContent='✗ '+err.message;
+    document.getElementById('lrPermStatus').style.color='var(--red)';
+  }
+}
+function lrStartRec(){
+  LR2.chunks=[];LR2.isRecording=true;LR2.capturedSignal=null;LR2.capturedHit=null;
+  document.getElementById('lrResults').innerHTML='';
+  document.getElementById('lrClassifyBtn').disabled=true;
+  document.getElementById('lrDownloadBtn').disabled=true;
+  document.getElementById('lrClearBtn').style.display='none';
+  const source=LR2.audioCtx.createMediaStreamSource(LR2.stream);
+  LR2.analyser=LR2.audioCtx.createAnalyser();LR2.analyser.fftSize=2048;
+  LR2.processor=LR2.audioCtx.createScriptProcessor(4096,1,1);
+  LR2.processor.onaudioprocess=e=>{if(LR2.isRecording)LR2.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));};
+  source.connect(LR2.analyser);source.connect(LR2.processor);LR2.processor.connect(LR2.audioCtx.destination);
+  LR2._source=source;
+  document.getElementById('lrRecBtn').style.display='none';
+  document.getElementById('lrStopBtn').style.display='inline-flex';
+  const st=document.getElementById('lrStatus');
+  st.textContent='● RECORDING — tap now!';st.className='rec-status live';
+  const cv=document.getElementById('liveCanvas');
+  function loop(){LR2.animFrame=requestAnimationFrame(loop);drawScope(cv,LR2.analyser,false);}
+  loop();
+}
+function lrStopRec(){
+  LR2.isRecording=false;cancelAnimationFrame(LR2.animFrame);
+  if(LR2.processor){LR2.processor.disconnect();LR2._source.disconnect();}
+  const totalLen=LR2.chunks.reduce((s,c)=>s+c.length,0);
+  const signal=new Float32Array(totalLen);let offset=0;
+  for(const c of LR2.chunks){signal.set(c,offset);offset+=c.length;}
+  LR2.capturedSignal=signal;
+  document.getElementById('lrRecBtn').style.display='inline-flex';
+  document.getElementById('lrStopBtn').style.display='none';
+  // plot full signal
+  const cv=document.getElementById('liveCanvas');
+  plotWaveforms(cv,[signal],LR2.sr,'Captured — detecting hit…');
+  // detect first hit
+  const onsets=detectOnsets(signal,LR2.sr);
+  const st=document.getElementById('lrStatus');
+  if(!onsets.length){
+    st.textContent='No hit detected — tap more firmly and try again';st.className='rec-status';
+    return;
+  }
+  const onset=onsets[0];
+  const start=Math.max(0,onset-Math.round(.02*LR2.sr));
+  let hit=signal.slice(start,Math.min(signal.length,onset+Math.round(.8*LR2.sr)));
+  hit=trimTail(hit,LR2.sr,.05);
+  if(hit.length<Math.round(.03*LR2.sr)){
+    st.textContent='Hit too short — try again';st.className='rec-status';return;
+  }
+  LR2.capturedHit=hit;
+  plotWaveforms(cv,[hit],LR2.sr,`Hit @ ${(onset/LR2.sr*1000).toFixed(0)}ms · ${(hit.length/LR2.sr*1000).toFixed(0)}ms · ${LR2.sr.toLocaleString()} Hz`);
+  st.textContent=`✓ Hit detected at ${(onset/LR2.sr*1000).toFixed(0)}ms — ready to classify`;
+  st.className='rec-status ok';
+  document.getElementById('lrClassifyBtn').disabled=!Object.keys(ST.models).length;
+  document.getElementById('lrDownloadBtn').disabled=false;
+  document.getElementById('lrClearBtn').style.display='inline-flex';
+}
+function classifyLiveHit(){
+  if(!LR2.capturedHit||!Object.keys(ST.models).length)return;
+  const feat=Array.from(extractFeatures(new Float32Array(LR2.capturedHit),LR2.sr));
+  const featS=prepX([feat],ST.scaler,false);
+  let html=`<div class="infer-cards" style="margin-top:14px">`;
+  Object.keys(ST.models).forEach(name=>{
+    const m=ST.models[name];
+    const pred=(m.predict?m.predict(featS):m.predictRaw([feat]))[0];
+    let scoreTxt='';
+    if(m.decisionScore){const s=m.decisionScore(featS)[0];scoreTxt=`margin ${s.toFixed(3)}`;}
+    else if(m.decisionScoreRaw){const s=m.decisionScoreRaw([feat])[0];scoreTxt=`margin ${s.toFixed(3)}`;}
+    const label=pred===0?'HEALTHY':'DAMAGED',cls=pred===0?'good':'bad';
+    html+=`<div class="infer-card"><div class="infer-model">${name}</div>
+      <div class="infer-result ${cls}" style="font-size:1.3rem">${label}</div>
+      <div class="infer-conf">${scoreTxt}</div></div>`;
+  });
+  html+=`</div>`;
+  document.getElementById('lrResults').innerHTML=html;
+}
+function lrClear(){
+  LR2.capturedSignal=null;LR2.capturedHit=null;
+  document.getElementById('lrResults').innerHTML='';
+  document.getElementById('lrClassifyBtn').disabled=true;
+  document.getElementById('lrDownloadBtn').disabled=true;
+  document.getElementById('lrClearBtn').style.display='none';
+  const st=document.getElementById('lrStatus');st.textContent='Ready — press RECORD';st.className='rec-status';
+  drawScopeIdle(document.getElementById('liveCanvas'),'Press RECORD then tap the plate once');
+}
+function downloadLiveHit(){
+  if(!LR2.capturedHit||!LR2.capturedHit.length)return;
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  const filename=`live_hit_${Math.round(LR2.sr)}Hz_${stamp}.wav`;
+  downloadWav(LR2.capturedHit,Math.round(LR2.sr),filename);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -961,7 +2026,9 @@ function goStep(n){
   ST.currentStep=n;
   window.scrollTo({top:0,behavior:'smooth'});
 }
-document.querySelectorAll('.sn-item').forEach(item=>{item.addEventListener('click',()=>goStep(parseInt(item.dataset.step)));});
+document.querySelectorAll('.sn-item').forEach(item=>{
+  item.addEventListener('click',()=>goStep(parseInt(item.dataset.step)));
+});
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ═══════════════════════════════════════════════════════════════

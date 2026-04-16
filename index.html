@@ -1274,12 +1274,11 @@ async function processAllZips() {
         }catch(e){console.warn('Skip',entry.name,e);}
         done++;setProc(`Iteration ${i+1}: ${done}/${entries.length} files…`,((i+done/entries.length*.85)/N)*100);await sleep(0);
       }
-      const feats=sessionNorm(rawFeats);
       for(const cell of Object.keys(hits)){
         const label=ST.badCells.has(cell)?1:0;
-        feats[cell].forEach(f=>{allX.push(f);allY.push(label);allIter.push(i);});
+        rawFeats[cell].forEach(f=>{allX.push(f);allY.push(label);allIter.push(i);});
       }
-      ST.iterData[i]={hits,feats};
+      ST.iterData[i]={hits,feats:rawFeats};
       status.innerHTML+=`<div style="margin-bottom:6px"><span class="chip chip-ok">✓ Iter ${i+1}</span> <span style="font-size:.7rem;color:var(--dim)">${Object.keys(hits).length} cells · ${Object.values(hits).reduce((s,h)=>s+h.length,0)} hits</span></div>`;
     }catch(e){status.innerHTML+=`<div><span class="chip chip-err">✗ Iter ${i+1}</span> <span style="font-size:.7rem;color:var(--dim)">${e.message}</span></div>`;}
   }
@@ -1482,7 +1481,7 @@ async function lsFinalizeLiveDataset(){
       if(!cellHits?.length)continue;
       rawFeats[cell]=cellHits.map(h=>Array.from(extractFeatures(h,LS.sr)));
     }
-    const feats=sessionNorm(rawFeats);
+    const feats=rawFeats;
     ST.iterData[i]={hits,feats};
     for(const [cell,fList] of Object.entries(feats)){
       const label=ST.badCells.has(cell)?1:0;
@@ -1723,7 +1722,7 @@ async function trainModels(){
   ST.models={};const res=[];
   const tasks=[];
   if(sel.KNN)tasks.push({name:'KNN',fn:()=>{const m=new KNN(5).fit(XtrS,yTr);ST.models['KNN']=m;return{pred:m.predict(XvS),m};}});
-  if(sel.DT)tasks.push({name:'DT',fn:()=>{const m=new DT(6).fit(Xtr,yTr);ST.models['DT']=m;return{pred:m.predict(Xv),m};},raw:true});
+  if(sel.DT)tasks.push({name:'DT',fn:()=>{const m=new DT(6).fit(XtrS,yTr);ST.models['DT']=m;return{pred:m.predict(XvS),m};}});
   if(sel.LR)tasks.push({name:'LR',fn:()=>{const m=new LR(400,.05,1).fit(XtrS,yTr);ST.models['LR']=m;return{pred:m.predict(XvS),m};}});
   if(sel.SVM)tasks.push({name:'SVM',fn:()=>{const n0=yTr.filter(v=>v===0).length,n1=yTr.filter(v=>v===1).length,tot=yTr.length;const m=new SVM(1,4000,tot/n1||1,tot/n0||1).fit(XtrS,yTr);ST.models['SVM']=m;return{pred:m.predict(XvS),m};}});
   let done=0;
@@ -1820,13 +1819,7 @@ async function runInference(){
       }
     }catch(e){console.warn(e);}
     if(zipRawX.length){
-      const D=zipRawX[0].length,Nzip=zipRawX.length;
-      const mean=new Array(D).fill(0),std=new Array(D).fill(0);
-      for(const f of zipRawX)for(let j=0;j<D;j++)mean[j]+=f[j];
-      for(let j=0;j<D;j++)mean[j]/=Nzip;
-      for(const f of zipRawX)for(let j=0;j<D;j++)std[j]+=(f[j]-mean[j])**2;
-      for(let j=0;j<D;j++)std[j]=Math.sqrt(std[j]/Nzip)||1e-8;
-      for(let i=0;i<zipRawX.length;i++){infX.push(zipRawX[i].map((v,j)=>(v-mean[j])/std[j]));infY.push(zipY[i]);}
+      for(let i=0;i<zipRawX.length;i++){infX.push(zipRawX[i]);infY.push(zipY[i]);}
     }
   }
   if(!infX.length){out.innerHTML='<div class="callout">No matching files found.</div>';document.getElementById('infBtn').disabled=false;document.getElementById('infProg').style.display='none';return;}
@@ -1836,7 +1829,7 @@ async function runInference(){
   const results={};
   modelNames.forEach(name=>{
     const m=ST.models[name];
-    const pred=m.predictRaw?m.predictRaw(infX):m.predict(infXS);
+    const pred=m.predict(infXS);
     results[name]={acc:accuracy(infY,pred),cm:confMatrix(infY,pred)};
   });
   setInf('Done!',100);

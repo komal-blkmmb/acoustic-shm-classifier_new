@@ -576,14 +576,14 @@ canvas{display:block;width:100%;height:auto;}
       <div class="mc-icon">📍</div>
       <div class="mc-check"></div>
       <div class="mc-name">KNN</div>
-      <div class="mc-desc">k=5, Euclidean distance voting</div>
+      <div class="mc-desc">k=9, Euclidean distance voting</div>
     </label>
     <label class="model-card selected" id="chk-DT">
       <input type="checkbox" checked>
       <div class="mc-icon">🌿</div>
       <div class="mc-check"></div>
       <div class="mc-name">Decision Tree</div>
-      <div class="mc-desc">CART, max depth=6, Gini impurity</div>
+      <div class="mc-desc">CART, depth=4, all features, min 15 samples/leaf</div>
     </label>
     <label class="model-card selected" id="chk-LR">
       <input type="checkbox" checked>
@@ -1021,7 +1021,7 @@ class KNN {
 class DT {
   constructor(maxD=6){this.maxD=maxD;}
   _gini(y){const n=y.length;if(!n)return 0;let c0=0;for(const v of y)if(v===0)c0++;const p=c0/n;return 1-p*p-(1-p)*(1-p);}
-  _build(X,y,d){const n=X.length,maj=y.filter(v=>v===1).length>=y.length/2?1:0;if(d>=this.maxD||n<4||new Set(y).size===1)return{l:true,v:maj};const dim=X[0].length,nF=Math.max(1,Math.round(Math.sqrt(dim)));const feats=[];for(let i=0;i<dim;i++)feats.push(i);feats.sort(()=>Math.random()-.5);const fs=feats.slice(0,nF);let bG=-1,bF=0,bT=0;const pG=this._gini(y);for(const f of fs){const vals=[...new Set(X.map(x=>x[f]))].sort((a,b)=>a-b);for(let t=0;t<vals.length-1;t++){const th=(vals[t]+vals[t+1])/2;const ly=[],ry=[];for(let i=0;i<n;i++)(X[i][f]<=th?ly:ry).push(y[i]);if(!ly.length||!ry.length)continue;const g=pG-(ly.length/n)*this._gini(ly)-(ry.length/n)*this._gini(ry);if(g>bG){bG=g;bF=f;bT=th;}}}if(bG<=0)return{l:true,v:maj};const lX=[],lY=[],rX=[],rY=[];for(let i=0;i<n;i++){if(X[i][bF]<=bT){lX.push(X[i]);lY.push(y[i]);}else{rX.push(X[i]);rY.push(y[i]);}}return{l:false,f:bF,t:bT,L:this._build(lX,lY,d+1),R:this._build(rX,rY,d+1)};}
+  _build(X,y,d){const n=X.length,maj=y.filter(v=>v===1).length>=y.length/2?1:0;if(d>=this.maxD||n<15||new Set(y).size===1)return{l:true,v:maj};const dim=X[0].length;const fs=Array.from({length:dim},(_,i)=>i);let bG=-1,bF=0,bT=0;const pG=this._gini(y);for(const f of fs){const vals=[...new Set(X.map(x=>x[f]))].sort((a,b)=>a-b);for(let t=0;t<vals.length-1;t++){const th=(vals[t]+vals[t+1])/2;const ly=[],ry=[];for(let i=0;i<n;i++)(X[i][f]<=th?ly:ry).push(y[i]);if(!ly.length||!ry.length)continue;const g=pG-(ly.length/n)*this._gini(ly)-(ry.length/n)*this._gini(ry);if(g>bG){bG=g;bF=f;bT=th;}}}if(bG<=0)return{l:true,v:maj};const lX=[],lY=[],rX=[],rY=[];for(let i=0;i<n;i++){if(X[i][bF]<=bT){lX.push(X[i]);lY.push(y[i]);}else{rX.push(X[i]);rY.push(y[i]);}}return{l:false,f:bF,t:bT,L:this._build(lX,lY,d+1),R:this._build(rX,rY,d+1)};}
   _pred(x,nd){if(nd.l)return nd.v;return x[nd.f]<=nd.t?this._pred(x,nd.L):this._pred(x,nd.R);}
   fit(X,y){this.tree=this._build(X,y,0);return this;}
   predict(X){return X.map(x=>this._pred(x,this.tree));}
@@ -1074,13 +1074,22 @@ function accuracy(yTrue,yPred){let c=0;for(let i=0;i<yTrue.length;i++)if(yTrue[i
 function prepX(X,scaler,fit=false){return fit?scaler.fitTr(X):scaler.tr(X);}
 function iterationSplit(X,y,iters){
   // Split by recording session: last ~30% of iterations = val, rest = train.
-  // This mirrors real deployment: train on known sessions, test on a new recording.
+  // Falls back to random 70/30 if iter info is missing or only 1 session.
   const unique=[...new Set(iters)].sort((a,b)=>a-b);
-  const nVal=Math.max(1,Math.round(unique.length*0.3));
-  const valIters=new Set(unique.slice(-nVal));
-  const trainIdx=[],valIdx=[];
-  iters.forEach((it,i)=>(valIters.has(it)?valIdx:trainIdx).push(i));
-  return {trainIdx,valIdx,valIters:Array.from(valIters).map(v=>v+1)};
+  if(unique.length>=2){
+    const nVal=Math.max(1,Math.round(unique.length*0.3));
+    const valIters=new Set(unique.slice(-nVal));
+    const trainIdx=[],valIdx=[];
+    iters.forEach((it,i)=>(valIters.has(it)?valIdx:trainIdx).push(i));
+    if(trainIdx.length>0&&valIdx.length>0)
+      return {trainIdx,valIdx,valIters:Array.from(valIters).map(v=>v+1)};
+  }
+  // Fallback: simple 70/30 shuffle split
+  const idx=Array.from({length:X.length},(_,i)=>i);
+  let s=42;const rng=()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  const cut=Math.round(idx.length*0.7);
+  return {trainIdx:idx.slice(0,cut),valIdx:idx.slice(cut),valIters:['random']};
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1738,26 +1747,41 @@ async function trainModels(){
   const XtrS=prepX(Xtr,ST.scaler,true),XvS=prepX(Xv,ST.scaler,false);
   ST.models={};const res=[];
   const tasks=[];
-  if(sel.KNN)tasks.push({name:'KNN',fn:()=>{const m=new KNN(5).fit(XtrS,yTr);ST.models['KNN']=m;return{pred:m.predict(XvS),m};}});
-  if(sel.DT)tasks.push({name:'DT',fn:()=>{const m=new DT(6).fit(XtrS,yTr);ST.models['DT']=m;return{pred:m.predict(XvS),m};}});
+  if(sel.KNN)tasks.push({name:'KNN',fn:()=>{const m=new KNN(9).fit(XtrS,yTr);ST.models['KNN']=m;return{pred:m.predict(XvS),m};}});
+  if(sel.DT)tasks.push({name:'DT',fn:()=>{const m=new DT(4).fit(XtrS,yTr);ST.models['DT']=m;return{pred:m.predict(XvS),m};}});
   if(sel.LR)tasks.push({name:'LR',fn:()=>{const m=new LR(400,.05,1).fit(XtrS,yTr);ST.models['LR']=m;return{pred:m.predict(XvS),m};}});
   if(sel.SVM)tasks.push({name:'SVM',fn:()=>{const m=new SVM(1,4000,1,1).fit(XtrS,yTr);ST.models['SVM']=m;return{pred:m.predict(XvS),m};}});
+  if(Xtr.length===0||Xv.length===0){
+    document.getElementById('trainResults').innerHTML='<div class="callout">Split produced empty train or val set — re-process your ZIPs first.</div>';
+    document.getElementById('trainBtn').disabled=false;document.getElementById('trainProg').style.display='none';return;
+  }
   let done=0;
   for(const t of tasks){
     setTrain(`Training ${t.name}…`,done/tasks.length*90);await sleep(10);
-    const {pred,m}=t.fn();
-    const acc=accuracy(yV,pred),cm=confMatrix(yV,pred);
-    res.push({name:t.name,acc,cm});done++;
+    try{
+      const {pred,m}=t.fn();
+      const trainPred=m.predict(XtrS);
+      const acc=accuracy(yV,pred),trainAcc=accuracy(yTr,trainPred),cm=confMatrix(yV,pred);
+      res.push({name:t.name,acc,trainAcc,cm});
+    }catch(e){
+      res.push({name:t.name,acc:0,trainAcc:0,cm:[[0,0],[0,0]],err:e.message});
+      console.error(t.name,e);
+    }
+    done++;
   }
   setTrain('Done!',100);
-  const rows=res.sort((a,b)=>b.acc-a.acc).map(({name,acc,cm})=>{
-    const cls=acc>.8?'acc-good':acc>.65?'acc-warn':'acc-bad';
-    return `<tr><td style="font-family:var(--mono)">${name}</td><td class="${cls}">${(acc*100).toFixed(2)}%</td><td><div style="background:var(--s3);border-radius:3px;height:4px;width:${(acc*100).toFixed(0)}%;background:var(--accent);min-width:2px"></div></td></tr>`;
+  const rows=res.sort((a,b)=>b.acc-a.acc).map(({name,acc,trainAcc,cm,err})=>{
+    if(err) return `<tr><td style="font-family:var(--mono)">${name}</td><td class="acc-bad" colspan="3">Error: ${err}</td></tr>`;
+    const vCls=acc>.8?'acc-good':acc>.65?'acc-warn':'acc-bad';
+    const tCls=trainAcc>.8?'acc-good':trainAcc>.65?'acc-warn':'acc-bad';
+    const gap=trainAcc-acc;
+    const gapTxt=gap>0.15?` <span style="color:var(--red);font-size:.65rem">(▼${(gap*100).toFixed(0)}% drop)</span>`:'';
+    return `<tr><td style="font-family:var(--mono)">${name}</td><td class="${tCls}">${(trainAcc*100).toFixed(2)}%</td><td class="${vCls}">${(acc*100).toFixed(2)}%${gapTxt}</td><td><div style="border-radius:3px;height:4px;width:${(acc*100).toFixed(0)}%;background:var(--accent);min-width:2px"></div></td></tr>`;
   }).join('');
   document.getElementById('trainResults').innerHTML=`
     <div class="card">
       <div class="card-title">Validation Results — ${valIdx.length} hits from held-out iterations: ${valIters.join(', ')}</div>
-      <table><tr><th>Model</th><th>Val Accuracy</th><th>Bar</th></tr>${rows}</table>
+      <table><tr><th>Model</th><th>Train Acc</th><th>Val Acc</th><th>Bar</th></tr>${rows}</table>
     </div>
     <div class="card">
       <div class="card-title">Confusion Matrices</div>
@@ -1904,6 +1928,27 @@ async function classifySingle(){
       <div class="infer-result ${cls}">${label}</div>
       <div class="infer-conf">${scoreTxt}</div></div>`;
   });
+  // Ensemble consensus
+  const votes=Object.keys(ST.models).map(name=>{
+    const m=ST.models[name];
+    return (m.predict?m.predict(featS):m.predictRaw([feat]))[0];
+  });
+  const damaged=votes.filter(v=>v===1).length;
+  const total=votes.length;
+  const svmPred=ST.models['SVM']?ST.models['SVM'].predict(featS)[0]:null;
+  const lrPred=ST.models['LR']?ST.models['LR'].predict(featS)[0]:null;
+  const consensusClass=(damaged>total/2)?'bad':'good';
+  const consensusLabel=(damaged>total/2)?'DAMAGED':'HEALTHY';
+  const confidence=Math.max(damaged,total-damaged)/total;
+  const svmLrAgree=svmPred!==null&&lrPred!==null&&svmPred===lrPred;
+  const trustNote=svmLrAgree
+    ?`<span style="color:var(--accent);font-size:.65rem">✓ SVM & LR agree — high confidence</span>`
+    :`<span style="color:var(--amber);font-size:.65rem">⚠ SVM & LR disagree — low confidence</span>`;
+  html+=`<div style="margin-top:14px;padding:14px 18px;border-radius:10px;border:2px solid ${consensusClass==='bad'?'rgba(194,39,72,.4)':'rgba(15,159,95,.4)'};background:${consensusClass==='bad'?'rgba(194,39,72,.06)':'rgba(15,159,95,.06)'}">
+    <div style="font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-bottom:6px;letter-spacing:1px">ENSEMBLE (${damaged}/${total} models flagged damage)</div>
+    <div style="font-family:var(--mono);font-size:1.6rem;font-weight:700;color:${consensusClass==='bad'?'var(--red)':'var(--accent)'}">${consensusLabel}</div>
+    <div style="margin-top:4px">${trustNote}</div>
+  </div>`;
   html+=`</div>`;
   out.innerHTML=html;
 }
@@ -2003,6 +2048,26 @@ function classifyLiveHit(){
       <div class="infer-result ${cls}" style="font-size:1.3rem">${label}</div>
       <div class="infer-conf">${scoreTxt}</div></div>`;
   });
+  // Ensemble consensus
+  const votesL=Object.keys(ST.models).map(name=>{
+    const m=ST.models[name];
+    return (m.predict?m.predict(featS):m.predictRaw([feat]))[0];
+  });
+  const damagedL=votesL.filter(v=>v===1).length;
+  const totalL=votesL.length;
+  const svmL=ST.models['SVM']?ST.models['SVM'].predict(featS)[0]:null;
+  const lrL=ST.models['LR']?ST.models['LR'].predict(featS)[0]:null;
+  const cClass=(damagedL>totalL/2)?'bad':'good';
+  const cLabel=(damagedL>totalL/2)?'DAMAGED':'HEALTHY';
+  const svmLrAgreeL=svmL!==null&&lrL!==null&&svmL===lrL;
+  const trustL=svmLrAgreeL
+    ?`<span style="color:var(--accent);font-size:.65rem">✓ SVM & LR agree — high confidence</span>`
+    :`<span style="color:var(--amber);font-size:.65rem">⚠ SVM & LR disagree — low confidence</span>`;
+  html+=`<div style="margin-top:14px;padding:14px 18px;border-radius:10px;border:2px solid ${cClass==='bad'?'rgba(194,39,72,.4)':'rgba(15,159,95,.4)'};background:${cClass==='bad'?'rgba(194,39,72,.06)':'rgba(15,159,95,.06)'}">
+    <div style="font-family:var(--mono);font-size:.62rem;color:var(--dim);margin-bottom:6px;letter-spacing:1px">ENSEMBLE (${damagedL}/${totalL} models flagged damage)</div>
+    <div style="font-family:var(--mono);font-size:1.6rem;font-weight:700;color:${cClass==='bad'?'var(--red)':'var(--accent)'}">${cLabel}</div>
+    <div style="margin-top:4px">${trustL}</div>
+  </div>`;
   html+=`</div>`;
   document.getElementById('lrResults').innerHTML=html;
 }

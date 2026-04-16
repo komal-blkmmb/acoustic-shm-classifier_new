@@ -882,12 +882,16 @@ function computeMFCCMap(sig,sr,nMFCC=13,nFFT=1024,hop=256){
   }
   return {matrix,nFrames:mfccFrames.length,nMFCC};
 }
-function detectOnsets(sig,sr,mult=2.0,minGap=0.3,fLen=2048,hop=512) {
+function detectOnsets(sig,sr,minGap=0.15,fLen=2048,hop=512) {
   const nF=Math.floor((sig.length-fLen)/hop)+1;
   const rms=new Float32Array(nF);
   for(let i=0;i<nF;i++){let s=0;for(let j=0;j<fLen;j++)s+=sig[i*hop+j]**2;rms[i]=Math.sqrt(s/fLen);}
-  const mean=rms.reduce((a,b)=>a+b,0)/nF;
-  const thr=mean*mult,loud=rms.map(v=>v>thr?1:0);
+  // Use noise-floor threshold: sort frames, take 30th-percentile as floor, threshold at 4x above it.
+  // This is robust to session-level loudness differences unlike mean*mult.
+  const sorted=[...rms].sort((a,b)=>a-b);
+  const noiseFloor=sorted[Math.floor(nF*0.30)];
+  const thr=Math.max(noiseFloor*4.0, sorted[sorted.length-1]*0.03);
+  const loud=rms.map(v=>v>thr?1:0);
   const out=[],minS=Math.round(minGap*sr);
   for(let i=1;i<nF;i++) if(loud[i-1]===0&&loud[i]===1){const s=i*hop;if(!out.length||s-out[out.length-1]>=minS)out.push(s);}
   return out;
@@ -902,7 +906,7 @@ function trimTail(hit,sr,thr=0.05) {
   const end=Math.min(hit.length,Math.max(Math.round(.05*sr),last*hop+Math.round(.03*sr)));
   return hit.slice(0,end);
 }
-function hitQuality(hit, refPeak, minRelPeak=0.20, minCrest=3.0, maxAttackRatio=0.40) {
+function hitQuality(hit, refPeak, minRelPeak=0.05, minCrest=2.0, maxAttackRatio=0.50) {
   if(!hit.length) return {keep:false,reason:'empty'};
   let peak=0, sumSq=0, peakIdx=0;
   for(let i=0;i<hit.length;i++){const a=Math.abs(hit[i]);sumSq+=hit[i]*hit[i];if(a>peak){peak=a;peakIdx=i;}}
@@ -923,10 +927,20 @@ function extractFeatures(sig,sr) {
   const fixed=fixLength(dc,ST.nSamples);
   const psd=welchPSD(fixed,1024,512,128);
   const {mean:mfccM,std:mfccS}=computeMFCC(fixed,sr,13,1024,256);
-  const feat=new Float32Array(154);
+  const feat=new Float32Array(157); // 128 PSD + 13 MFCC mean + 13 MFCC std + 3 physical
   const psdTotal=psd.reduce((s,v)=>s+v,0);
   for(let i=0;i<128;i++) feat[i]=psdTotal>1e-12?psd[i]/psdTotal:0;
   feat.set(mfccM,128); feat.set(mfccS,141);
+  // Physical damage-diagnostic features
+  // 154: Spectral centroid (0-1). Damaged cells tend to shift this.
+  let wSum=0; for(let i=0;i<128;i++) wSum+=i*feat[i];
+  feat[154]=psdTotal>1e-12?wSum/127:0;
+  // 155: Peak PSD bin (0-1). Resonance frequency shifts with damage.
+  let peakBin=0,peakVal=0; for(let i=0;i<128;i++) if(feat[i]>peakVal){peakVal=feat[i];peakBin=i;}
+  feat[155]=peakBin/127;
+  // 156: Low-freq energy ratio (bottom 25% of bins). Damage pushes energy downward.
+  let lowE=0; for(let i=0;i<32;i++) lowE+=feat[i];
+  feat[156]=lowE;
   return feat;
 }
 
@@ -1058,14 +1072,15 @@ class RBFSVM {
 function confMatrix(yTrue,yPred){const cm=[[0,0],[0,0]];for(let i=0;i<yTrue.length;i++)cm[yTrue[i]][yPred[i]]++;return cm;}
 function accuracy(yTrue,yPred){let c=0;for(let i=0;i<yTrue.length;i++)if(yTrue[i]===yPred[i])c++;return c/yTrue.length;}
 function prepX(X,scaler,fit=false){return fit?scaler.fitTr(X):scaler.tr(X);}
-function stratifiedSplit(X,y,testFrac=.3,seed=42){
-  let s=seed;const rng=()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};
-  const idx0=[],idx1=[];y.forEach((v,i)=>v===0?idx0.push(i):idx1.push(i));
-  [idx0,idx1].forEach(arr=>{for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}});
-  const n0v=Math.round(idx0.length*testFrac),n1v=Math.round(idx1.length*testFrac);
-  const valIdx=[...idx0.slice(0,n0v),...idx1.slice(0,n1v)];
-  const trainIdx=[...idx0.slice(n0v),...idx1.slice(n1v)];
-  return {trainIdx,valIdx};
+function iterationSplit(X,y,iters){
+  // Split by recording session: last ~30% of iterations = val, rest = train.
+  // This mirrors real deployment: train on known sessions, test on a new recording.
+  const unique=[...new Set(iters)].sort((a,b)=>a-b);
+  const nVal=Math.max(1,Math.round(unique.length*0.3));
+  const valIters=new Set(unique.slice(-nVal));
+  const trainIdx=[],valIdx=[];
+  iters.forEach((it,i)=>(valIters.has(it)?valIdx:trainIdx).push(i));
+  return {trainIdx,valIdx,valIters:Array.from(valIters).map(v=>v+1)};
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1237,7 +1252,7 @@ async function processAllZips() {
   document.getElementById('processBtn').disabled=true;
   document.getElementById('procProg').style.display='block';
   const status=document.getElementById('procStatus');status.innerHTML='';
-  const allX=[],allY=[],allIter=[];
+  const allX=[],allY=[],allIter=[],allCells=[];
   const N=ST.zips.length;
   ST.iterData=Array(N).fill(null);
   for(let i=0;i<N;i++){
@@ -1276,15 +1291,16 @@ async function processAllZips() {
       }
       for(const cell of Object.keys(hits)){
         const label=ST.badCells.has(cell)?1:0;
-        rawFeats[cell].forEach(f=>{allX.push(f);allY.push(label);allIter.push(i);});
+        rawFeats[cell].forEach(f=>{allX.push(f);allY.push(label);allIter.push(i);allCells.push(cell);});
       }
       ST.iterData[i]={hits,feats:rawFeats};
       status.innerHTML+=`<div style="margin-bottom:6px"><span class="chip chip-ok">✓ Iter ${i+1}</span> <span style="font-size:.7rem;color:var(--dim)">${Object.keys(hits).length} cells · ${Object.values(hits).reduce((s,h)=>s+h.length,0)} hits</span></div>`;
     }catch(e){status.innerHTML+=`<div><span class="chip chip-err">✗ Iter ${i+1}</span> <span style="font-size:.7rem;color:var(--dim)">${e.message}</span></div>`;}
   }
   if(allX.length<10){setProc('Error: not enough data',0);document.getElementById('processBtn').disabled=false;return;}
-  ST.dataset={X:allX,y:allY,iter:allIter};
-  document.getElementById('splitInfo').textContent=`${allX.length} hits — ~${Math.round(allX.length*.7)} train / ~${Math.round(allX.length*.3)} val`;
+  ST.dataset={X:allX,y:allY,iter:allIter,cells:allCells};
+  const uIters=[...new Set(allIter)];
+  document.getElementById('splitInfo').textContent=`${allX.length} hits · ${uIters.length} iterations — last ${Math.max(1,Math.round(uIters.length*.3))} iter(s) held out for val`;
   populateVizSelectors();setProc('Done!',100);
   document.getElementById('dataReadyMsg').style.display='inline';
   document.getElementById('toStep3Btn').style.display='inline-block';
@@ -1473,7 +1489,7 @@ async function lsFinalizeLiveDataset(){
   document.getElementById('lsFinalizeBtn').disabled=true;
   document.getElementById('lsAnotherBtn').disabled=true;
   await sleep(20);
-  const allX=[],allY=[],allIter=[];
+  const allX=[],allY=[],allIter=[],allCells=[];
   ST.iterData=Array(LS.iterations.length).fill(null);
   for(let i=0;i<LS.iterations.length;i++){
     const rawFeats={},hits=LS.iterations[i].hits;
@@ -1485,7 +1501,7 @@ async function lsFinalizeLiveDataset(){
     ST.iterData[i]={hits,feats};
     for(const [cell,fList] of Object.entries(feats)){
       const label=ST.badCells.has(cell)?1:0;
-      fList.forEach(f=>{allX.push(f);allY.push(label);allIter.push(i);});
+      fList.forEach(f=>{allX.push(f);allY.push(label);allIter.push(i);allCells.push(cell);});
     }
     document.getElementById('lsProgBar').style.width=`${10+Math.round((i+1)/LS.iterations.length*80)}%`;
     await sleep(10);
@@ -1496,8 +1512,9 @@ async function lsFinalizeLiveDataset(){
     document.getElementById('lsAnotherBtn').disabled=false;
     return;
   }
-  ST.dataset={X:allX,y:allY,iter:allIter};
-  document.getElementById('splitInfo').textContent=`${allX.length} hits — ~${Math.round(allX.length*.7)} train / ~${Math.round(allX.length*.3)} val`;
+  ST.dataset={X:allX,y:allY,iter:allIter,cells:allCells};
+  const uIters=[...new Set(allIter)];
+  document.getElementById('splitInfo').textContent=`${allX.length} hits · ${uIters.length} iterations — last ${Math.max(1,Math.round(uIters.length*.3))} iter(s) held out for val`;
   populateVizSelectors();
   document.getElementById('lsProgBar').style.width='100%';
   document.getElementById('lsProgLabel').textContent=`Done! ${LS.iterations.length} live iteration(s) combined.`;
@@ -1713,8 +1730,8 @@ async function trainModels(){
   const sel={KNN:document.getElementById('chk-KNN').classList.contains('selected'),DT:document.getElementById('chk-DT').classList.contains('selected'),LR:document.getElementById('chk-LR').classList.contains('selected'),SVM:document.getElementById('chk-SVM').classList.contains('selected')};
   if(!Object.values(sel).some(Boolean)){alert('Select at least one model.');return;}
   document.getElementById('trainBtn').disabled=true;document.getElementById('trainProg').style.display='block';document.getElementById('trainResults').innerHTML='';
-  const {X,y}=ST.dataset;
-  const {trainIdx,valIdx}=stratifiedSplit(X,y,.3);
+  const {X,y,iter}=ST.dataset;
+  const {trainIdx,valIdx,valIters}=iterationSplit(X,y,iter||[]);
   const Xtr=trainIdx.map(i=>X[i]),yTr=trainIdx.map(i=>y[i]);
   const Xv=valIdx.map(i=>X[i]),yV=valIdx.map(i=>y[i]);
   ST.scaler=new StandardScaler();
@@ -1724,7 +1741,7 @@ async function trainModels(){
   if(sel.KNN)tasks.push({name:'KNN',fn:()=>{const m=new KNN(5).fit(XtrS,yTr);ST.models['KNN']=m;return{pred:m.predict(XvS),m};}});
   if(sel.DT)tasks.push({name:'DT',fn:()=>{const m=new DT(6).fit(XtrS,yTr);ST.models['DT']=m;return{pred:m.predict(XvS),m};}});
   if(sel.LR)tasks.push({name:'LR',fn:()=>{const m=new LR(400,.05,1).fit(XtrS,yTr);ST.models['LR']=m;return{pred:m.predict(XvS),m};}});
-  if(sel.SVM)tasks.push({name:'SVM',fn:()=>{const n0=yTr.filter(v=>v===0).length,n1=yTr.filter(v=>v===1).length,tot=yTr.length;const m=new SVM(1,4000,tot/n1||1,tot/n0||1).fit(XtrS,yTr);ST.models['SVM']=m;return{pred:m.predict(XvS),m};}});
+  if(sel.SVM)tasks.push({name:'SVM',fn:()=>{const m=new SVM(1,4000,1,1).fit(XtrS,yTr);ST.models['SVM']=m;return{pred:m.predict(XvS),m};}});
   let done=0;
   for(const t of tasks){
     setTrain(`Training ${t.name}…`,done/tasks.length*90);await sleep(10);
@@ -1739,7 +1756,7 @@ async function trainModels(){
   }).join('');
   document.getElementById('trainResults').innerHTML=`
     <div class="card">
-      <div class="card-title">Validation Results — ${valIdx.length} hits</div>
+      <div class="card-title">Validation Results — ${valIdx.length} hits from held-out iterations: ${valIters.join(', ')}</div>
       <table><tr><th>Model</th><th>Val Accuracy</th><th>Bar</th></tr>${rows}</table>
     </div>
     <div class="card">
